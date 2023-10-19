@@ -7,22 +7,6 @@ import (
 	"sort"
 )
 
-type nodes []*node
-
-func (n nodes) Less(i, j int) bool {
-	if n[i].matcher == nil {
-		return true
-	}
-	if n[j].matcher == nil {
-		return false
-	}
-
-	return n[i].matcher.Type() < n[j].matcher.Type()
-}
-
-func (n nodes) Swap(i, j int) { n[i], n[j] = n[j], n[i] }
-func (n nodes) Len() int      { return len(n) }
-
 type Handle any
 
 type node struct {
@@ -174,3 +158,19 @@ func lookup(ctx context.Context, n *node, str string) any {
 	return nil
 
 }
+
+type nodes []*node
+
+func (n nodes) Less(i, j int) bool {
+	if n[i].matcher == nil {
+		return true
+	}
+	if n[j].matcher == nil {
+		return false
+	}
+
+	return n[i].matcher.Type() < n[j].matcher.Type()
+}
+
+func (n nodes) Swap(i, j int) { n[i], n[j] = n[j], n[i] }
+func (n nodes) Len() int      { return len(n) }

@@ -1,10 +1,11 @@
 package limi
 
 import (
-	"context"
 	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/sanekee/limi/internal/limi"
 )
 
 type Handler interface{}
@@ -20,7 +21,7 @@ type Mux struct {
 	handlers    map[string]HandlerType
 	middlewares []Middleware
 
-	routes *node
+	routes *limi.Router
 }
 
 var defaultMux *Mux
@@ -33,7 +34,7 @@ func newMux(path string) *Mux {
 	return &Mux{
 		path:     path,
 		handlers: make(map[string]HandlerType),
-		routes:   &node{},
+		routes:   limi.NewRouter(path),
 	}
 }
 
@@ -111,55 +112,7 @@ func (r *Mux) Serve(opts ...MuxOption) http.Handler {
 		r.routes.Insert(path, handlers)
 	}
 
-	return r
-}
-
-func (r *Mux) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	if ctx == nil {
-		ctx = context.TODO()
-	}
-
-	ctx = NewContext(ctx)
-
-	path := req.URL.Path
-	h := r.routes.Lookup(ctx, path)
-	if h == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	hMap, ok := h.(map[string]http.Handler)
-	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	handler, ok := hMap[req.Method]
-	if !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	handler.ServeHTTP(w, req)
-}
-
-func buildHandlers(mws []Middleware, hvs map[string]http.Handler) map[string]http.Handler {
-	handlers := make(map[string]http.Handler)
-
-	for method, h := range hvs {
-		if len(mws) == 0 {
-			handlers[method] = h
-			continue
-		}
-
-		h = mws[len(mws)-1](h)
-		for i := len(mws) - 2; i >= 0; i-- {
-			h = mws[i](h)
-		}
-		handlers[method] = h
-	}
-	return handlers
+	return r.routes
 }
 
 func (r *Mux) Use(mw ...Middleware) {
@@ -175,6 +128,7 @@ type MuxOption func(r *Mux)
 func WithPath(path string) MuxOption {
 	return func(r *Mux) {
 		r.path = path
+		r.routes.SetPath(path)
 	}
 }
 
@@ -212,6 +166,24 @@ func isHTTPHandler(v reflect.Value) bool {
 
 	chk := of.AssignableTo(ht)
 	return chk
+}
+
+func buildHandlers(mws []Middleware, hvs map[string]http.Handler) map[string]http.Handler {
+	handlers := make(map[string]http.Handler)
+
+	for method, h := range hvs {
+		if len(mws) == 0 {
+			handlers[method] = h
+			continue
+		}
+
+		h = mws[len(mws)-1](h)
+		for i := len(mws) - 2; i >= 0; i-- {
+			h = mws[i](h)
+		}
+		handlers[method] = h
+	}
+	return handlers
 }
 
 func buildPath(host string, parent string, path string) string {

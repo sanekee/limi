@@ -80,21 +80,21 @@ func TestFindHandlerPath(t *testing.T) {
 	}
 
 	tests := []test{
-		// {
-		// 	pkgPath:  "base/handler/foo/",
-		// 	expected: "/foo/",
-		// },
-		// {
-		// 	pkgPath:  "base/handler/handlerfoo/",
-		// 	expected: "/handler/foo/",
-		// },
+		{
+			pkgPath:  "base/handler/foo/",
+			expected: "/foo/",
+		},
+		{
+			pkgPath:  "base/handler/handlerfoo/",
+			expected: "/handler/foo/",
+		},
 		{
 			pkgPath:  "/foo",
 			expected: "/foo",
 		},
 	}
 
-	// t.Parallel()
+	t.Parallel()
 
 	for _, r := range tests {
 		t.Run("", func(t *testing.T) {
