@@ -14,11 +14,19 @@ type Router struct {
 	path        string
 	node        *limi.Node
 	middlewares []func(http.Handler) http.Handler
+
+	notFoundHandler         http.Handler
+	methodNotAllowedHandler func(...string) http.Handler
 }
 
 // NewRouter returns Router with path preset
 func NewRouter(path string) *Router {
-	return &Router{path: path, node: &limi.Node{}}
+	return &Router{
+		path:                    path,
+		node:                    &limi.Node{},
+		notFoundHandler:         http.NotFoundHandler(),
+		methodNotAllowedHandler: methodNotAllowedHandler,
+	}
 }
 
 // SetPath set Router's path
@@ -34,6 +42,16 @@ func (r *Router) SetHost(host string) {
 // Use set Router's middlewares
 func (r *Router) Use(mws ...func(http.Handler) http.Handler) {
 	r.middlewares = append(r.middlewares, mws...)
+}
+
+// SetNotFoundHandler set the not found handler
+func (r *Router) SetNotFoundHandler(h http.Handler) {
+	r.notFoundHandler = h
+}
+
+// SetMethodNotAllowedHandler set the method not allowed handler with list of allowed methods
+func (r *Router) SetMethodNotAllowedHandler(h func(...string) http.Handler) {
+	r.methodNotAllowedHandler = h
 }
 
 // ServeHTTP implements the http.Handler interface
@@ -52,7 +70,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	hMap, ok := h.(map[string]http.Handler)
+	hMap, ok := h.(handlerMap)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -60,7 +78,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	handler, ok := hMap[req.Method]
 	if !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		r.methodNotAllowedHandler(hMap.keys()...).ServeHTTP(w, req)
 		return
 	}
 
@@ -79,8 +97,8 @@ func (r *Router) buildPath(path string) string {
 	return buildPath(r.host, r.path, path)
 }
 
-func buildHandlers(mws []func(http.Handler) http.Handler, hvs map[string]http.Handler) map[string]http.Handler {
-	handlers := make(map[string]http.Handler)
+func buildHandlers(mws []func(http.Handler) http.Handler, hvs handlerMap) handlerMap {
+	handlers := make(handlerMap)
 
 	for method, h := range hvs {
 		if len(mws) == 0 {
@@ -152,4 +170,23 @@ func findHandlerPath(path string) string {
 	}
 
 	return strings.Join(arrPath[1:], "/")
+}
+
+func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		for _, m := range allowedMethods {
+			w.Header().Add("Allow", strings.ToUpper(m))
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+}
+
+type handlerMap map[string]http.Handler
+
+func (h handlerMap) keys() []string {
+	var keys []string
+	for k := range h {
+		keys = append(keys, k)
+	}
+	return keys
 }
