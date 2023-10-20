@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
-
-	"github.com/sanekee/limi/internal/limi"
 )
 
 type Handler interface{}
@@ -15,7 +13,7 @@ type HandlerType struct {
 	Handlers map[string]http.Handler
 
 	// List of middlewares
-	Middlewares []Middleware
+	Middlewares []func(http.Handler) http.Handler
 }
 
 // AddHandler adds handler with optional middlewares for this particular handler
@@ -24,7 +22,7 @@ type HandlerType struct {
 //   - or assigned based on the package path after a 'handler' directory
 //
 // handler's methods that fulfill the http.HandlerFunc interface are automatically added
-func AddHandler(handler Handler, mws ...Middleware) {
+func AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) {
 	rt := reflect.TypeOf(handler)
 	baseRT := rt
 	if rt.Kind() == reflect.Pointer {
@@ -85,39 +83,34 @@ func Serve(opts ...MuxOption) http.Handler {
 	return defaultMux.Serve(opts...)
 }
 
-type MuxOption func(r *mux)
+type MuxOption func(m *mux)
 
 // WithPath sets the base path
 func WithPath(path string) MuxOption {
-	return func(r *mux) {
-		r.path = path
-		r.routes.SetPath(path)
+	return func(m *mux) {
+		m.router.SetPath(path)
 	}
 }
 
 // WithPath sets the host
 func WithHost(host string) MuxOption {
-	return func(r *mux) {
-		r.host = host
+	return func(m *mux) {
+		m.router.SetHost(host)
 	}
 }
 
 type Middleware func(http.Handler) http.Handler
 
 // WithPathMiddleWares sets the middlewares
-func WithMiddleWares(mw ...Middleware) MuxOption {
-	return func(r *mux) {
-		r.Use(mw...)
+func WithMiddleWares(mw ...func(http.Handler) http.Handler) MuxOption {
+	return func(m *mux) {
+		m.router.Use(mw...)
 	}
 }
 
 type mux struct {
-	host        string
-	path        string
-	handlers    map[string]HandlerType
-	middlewares []Middleware
-
-	routes *limi.Router
+	handlers map[string]HandlerType
+	router   *Router
 }
 
 var defaultMux *mux
@@ -134,25 +127,10 @@ func (r *mux) Serve(opts ...MuxOption) http.Handler {
 	}
 
 	for p, h := range r.handlers {
-		p, h := p, h
-
-		path := r.buildPath(p)
-		mws := append(r.middlewares, h.Middlewares...)
-		handlers := buildHandlers(mws, h.Handlers)
-
-		r.routes.Insert(path, handlers)
+		r.router.Insert(p, h)
 	}
 
-	return r.routes
-}
-
-// Use attach middlewares to mux
-func (r *mux) Use(mw ...Middleware) {
-	r.middlewares = append(r.middlewares, mw...)
-}
-
-func (r *mux) buildPath(path string) string {
-	return buildPath(r.host, r.path, path)
+	return r.router
 }
 
 func init() {
@@ -161,9 +139,8 @@ func init() {
 
 func newMux(path string) *mux {
 	return &mux{
-		path:     path,
 		handlers: make(map[string]HandlerType),
-		routes:   limi.NewRouter(path),
+		router:   NewRouter(path),
 	}
 }
 
@@ -187,79 +164,4 @@ func isHTTPHandler(v reflect.Value) bool {
 
 	chk := of.AssignableTo(ht)
 	return chk
-}
-
-func buildHandlers(mws []Middleware, hvs map[string]http.Handler) map[string]http.Handler {
-	handlers := make(map[string]http.Handler)
-
-	for method, h := range hvs {
-		if len(mws) == 0 {
-			handlers[method] = h
-			continue
-		}
-
-		h = mws[len(mws)-1](h)
-		for i := len(mws) - 2; i >= 0; i-- {
-			h = mws[i](h)
-		}
-		handlers[method] = h
-	}
-	return handlers
-}
-
-func buildPath(host string, parent string, path string) string {
-	var p string
-	if host != "" {
-		if strings.HasPrefix(path, host) {
-			return path
-		}
-		p = removeLeadingSlash(removeTraillingSlash(host))
-	}
-
-	if parent != "" && parent != "/" {
-		p += removeTraillingSlash(ensureLeadingSlash(parent))
-	}
-
-	if path != "" {
-		p += ensureLeadingSlash(path)
-	}
-
-	return p
-}
-
-func ensureLeadingSlash(path string) string {
-	if !strings.HasPrefix(path, "/") {
-		return "/" + path
-	}
-	return path
-}
-
-func removeTraillingSlash(path string) string {
-	if strings.HasSuffix(path, "/") {
-		return path[:len(path)-1]
-	}
-	return path
-}
-
-func ensureTrailingSlash(path string) string {
-	if !strings.HasSuffix(path, "/") {
-		return path + "/"
-	}
-	return path
-}
-
-func removeLeadingSlash(path string) string {
-	if strings.HasPrefix(path, "/") {
-		return path[1:]
-	}
-	return path
-}
-
-func findHandlerPath(path string) string {
-	arrPath := strings.SplitAfter(path, "/handler")
-	if len(arrPath) == 1 {
-		return path
-	}
-
-	return strings.Join(arrPath[1:], "/")
 }

@@ -18,7 +18,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo", func() string { return "i'm /foo" })
 		require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/bar", func() string { return "i'm /foo/bar" })
 		require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo", func() string { return "i'm /foo" })
 		require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/bar", func() string { return "i'm /foo/bar" })
 		require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo", func() string { return "i'm /foo" })
 		require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/bar", func() string { return "i'm /foo/bar" })
 		require.NoError(t, err)
@@ -253,7 +253,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("abcdefg", func() string { return "i'm abcdefg" })
 		require.NoError(t, err)
@@ -334,7 +334,7 @@ func TestStaticRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("a", func() string { return "i'm a" })
 		require.NoError(t, err)
@@ -416,7 +416,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/{id}", func() string { return "i'm /foo/{id}" })
 		require.NoError(t, err)
@@ -450,7 +450,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("{id}", func() string { return "i'm {id}" })
 		require.NoError(t, err)
@@ -471,7 +471,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo", func() string { return "i'm /foo" })
 		require.NoError(t, err)
@@ -512,7 +512,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/", func() string { return "i'm /foo/" })
 		require.NoError(t, err)
@@ -548,7 +548,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/", func() string { return "i'm /foo/" })
 		require.NoError(t, err)
@@ -593,7 +593,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/", func() string { return "i'm /foo/" })
 		require.NoError(t, err)
@@ -639,7 +639,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/", func() string { return "i'm /foo/" })
 		require.NoError(t, err)
@@ -682,7 +682,7 @@ func TestLabelRoute(t *testing.T) {
 	})
 
 	t.Run("multi labels", func(t *testing.T) {
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/{id}/bar/{id}", func() string { return "i'm /foo/{id}/bar/{id}" })
 		require.NoError(t, err)
@@ -714,7 +714,7 @@ func TestLabelRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/{foo_id}/bar/{bar_id}", func() string { return "i'm /foo/{foo_id}/bar/{bar_id}" })
 		require.NoError(t, err)
@@ -733,7 +733,7 @@ func TestLabelRoute(t *testing.T) {
 	})
 
 	t.Run("failed concatenated labels", func(t *testing.T) {
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("{id}{id2}", func() string { return "i'm invalid" })
 		require.Error(t, err)
@@ -745,7 +745,7 @@ func TestRegexpRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/{id:[\\d]+}", func() string { return "i'm /foo/{id}" })
 		require.NoError(t, err)
@@ -786,7 +786,7 @@ func TestRegexpRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo", func() string { return "i'm /foo" })
 		require.NoError(t, err)
@@ -842,7 +842,7 @@ func TestRegexpRoute(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		root := &node{}
+		root := &Node{}
 
 		err := root.Insert("/foo/{id}", func() string { return "i'm /foo/{id}" })
 		require.NoError(t, err)
@@ -895,7 +895,7 @@ func TestRegexpRoute(t *testing.T) {
 	})
 }
 
-func buildTree(n *node) *routePath {
+func buildTree(n *Node) *routePath {
 	if n == nil {
 		return nil
 	}

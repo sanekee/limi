@@ -9,13 +9,13 @@ import (
 
 type Handle any
 
-type node struct {
+type Node struct {
 	children nodes
 	handle   Handle
 	matcher  Matcher
 }
 
-func (n *node) Insert(str string, h any) error {
+func (n *Node) Insert(str string, h any) error {
 	if str == "" {
 		return errors.New(ErrInvalidInput)
 	}
@@ -59,7 +59,7 @@ func (n *node) Insert(str string, h any) error {
 	return nil
 }
 
-func insert(n *node, p Parser) (*node, string, error) {
+func insert(n *Node, p Parser) (*Node, string, error) {
 	if n.matcher == nil {
 		n.matcher = NewMatcher(p)
 		return n, "", nil
@@ -67,7 +67,7 @@ func insert(n *node, p Parser) (*node, string, error) {
 
 	str := p.Str
 	if n.matcher.Type() != p.Type {
-		newNode := &node{matcher: NewMatcher(p)}
+		newNode := &Node{matcher: NewMatcher(p)}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
 		return newNode, "", nil
@@ -87,7 +87,7 @@ func insert(n *node, p Parser) (*node, string, error) {
 		children, handle := n.children, n.handle
 
 		n.matcher = NewStringMatcher(matched)
-		n.children = append([]*node{}, &node{children: children, handle: handle, matcher: NewStringMatcher(trailNode)})
+		n.children = append([]*Node{}, &Node{children: children, handle: handle, matcher: NewStringMatcher(trailNode)})
 		n.handle = nil
 	}
 
@@ -107,7 +107,7 @@ func insert(n *node, p Parser) (*node, string, error) {
 			}
 			str = str1
 		}
-		newNode := &node{matcher: NewStringMatcher(str)}
+		newNode := &Node{matcher: NewStringMatcher(str)}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
 		str = ""
@@ -117,13 +117,13 @@ func insert(n *node, p Parser) (*node, string, error) {
 	return n, str, nil
 }
 
-func (n *node) Walk(fn func(level int, str string, h any)) {
+func (n *Node) Walk(fn func(level int, str string, h any)) {
 	var level int
 
 	n.walk(level, fn)
 }
 
-func (n *node) walk(level int, fn func(level int, str string, h any)) {
+func (n *Node) walk(level int, fn func(level int, str string, h any)) {
 	fn(level, n.matcher.Data(), n.handle)
 	level++
 	for _, nn := range n.children {
@@ -131,11 +131,11 @@ func (n *node) walk(level int, fn func(level int, str string, h any)) {
 	}
 }
 
-func (n *node) Lookup(ctx context.Context, str string) any {
+func (n *Node) Lookup(ctx context.Context, str string) any {
 	return lookup(ctx, n, str)
 }
 
-func lookup(ctx context.Context, n *node, str string) any {
+func lookup(ctx context.Context, n *Node, str string) any {
 	if str == "" {
 		return nil
 	}
@@ -159,7 +159,7 @@ func lookup(ctx context.Context, n *node, str string) any {
 
 }
 
-type nodes []*node
+type nodes []*Node
 
 func (n nodes) Less(i, j int) bool {
 	if n[i].matcher == nil {
