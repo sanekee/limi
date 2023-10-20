@@ -11,33 +11,19 @@ import (
 type Handler interface{}
 
 type HandlerType struct {
-	Methods     map[string]http.Handler
-	middlewares []Middleware
+	// Map of HTTP Handlers by Methods
+	Handlers map[string]http.Handler
+
+	// List of middlewares
+	Middlewares []Middleware
 }
 
-type Mux struct {
-	host        string
-	path        string
-	handlers    map[string]HandlerType
-	middlewares []Middleware
-
-	routes *limi.Router
-}
-
-var defaultMux *Mux
-
-func init() {
-	defaultMux = newMux("/")
-}
-
-func newMux(path string) *Mux {
-	return &Mux{
-		path:     path,
-		handlers: make(map[string]HandlerType),
-		routes:   limi.NewRouter(path),
-	}
-}
-
+// AddHandler adds handler with optional middlewares for this particular handler
+// handler's path is automatically discovered from
+//   - a 'path' tag in a field named 'limi'
+//   - or assigned based on the package path after a 'handler' directory
+//
+// handler's methods that fulfill the http.HandlerFunc interface are automatically added
 func AddHandler(handler Handler, mws ...Middleware) {
 	rt := reflect.TypeOf(handler)
 	baseRT := rt
@@ -83,21 +69,66 @@ func AddHandler(handler Handler, mws ...Middleware) {
 	}
 	if len(methods) > 0 {
 		defaultMux.handlers[hPath] = HandlerType{
-			Methods:     methods,
-			middlewares: mws,
+			Handlers:    methods,
+			Middlewares: mws,
 		}
 	}
 }
 
+// Mux returns the mux for manual manipulation
+func Mux() *mux {
+	return defaultMux
+}
+
+// Serve returns the HTTP handler for http server
 func Serve(opts ...MuxOption) http.Handler {
 	return defaultMux.Serve(opts...)
 }
 
-func (r *Mux) AddHandler(path string, h HandlerType) {
+type MuxOption func(r *mux)
+
+// WithPath sets the base path
+func WithPath(path string) MuxOption {
+	return func(r *mux) {
+		r.path = path
+		r.routes.SetPath(path)
+	}
+}
+
+// WithPath sets the host
+func WithHost(host string) MuxOption {
+	return func(r *mux) {
+		r.host = host
+	}
+}
+
+type Middleware func(http.Handler) http.Handler
+
+// WithPathMiddleWares sets the middlewares
+func WithMiddleWares(mw ...Middleware) MuxOption {
+	return func(r *mux) {
+		r.Use(mw...)
+	}
+}
+
+type mux struct {
+	host        string
+	path        string
+	handlers    map[string]HandlerType
+	middlewares []Middleware
+
+	routes *limi.Router
+}
+
+var defaultMux *mux
+
+// AddHandler adds HTTP handler by path manually
+func (r *mux) AddHandler(path string, h HandlerType) {
 	r.handlers[path] = h
 }
 
-func (r *Mux) Serve(opts ...MuxOption) http.Handler {
+// Serve returns the HTTP handler for http server
+func (r *mux) Serve(opts ...MuxOption) http.Handler {
 	for _, opt := range opts {
 		opt(r)
 	}
@@ -106,8 +137,8 @@ func (r *Mux) Serve(opts ...MuxOption) http.Handler {
 		p, h := p, h
 
 		path := r.buildPath(p)
-		mws := append(r.middlewares, h.middlewares...)
-		handlers := buildHandlers(mws, h.Methods)
+		mws := append(r.middlewares, h.Middlewares...)
+		handlers := buildHandlers(mws, h.Handlers)
 
 		r.routes.Insert(path, handlers)
 	}
@@ -115,34 +146,24 @@ func (r *Mux) Serve(opts ...MuxOption) http.Handler {
 	return r.routes
 }
 
-func (r *Mux) Use(mw ...Middleware) {
+// Use attach middlewares to mux
+func (r *mux) Use(mw ...Middleware) {
 	r.middlewares = append(r.middlewares, mw...)
 }
 
-func (r *Mux) buildPath(path string) string {
+func (r *mux) buildPath(path string) string {
 	return buildPath(r.host, r.path, path)
 }
 
-type MuxOption func(r *Mux)
-
-func WithPath(path string) MuxOption {
-	return func(r *Mux) {
-		r.path = path
-		r.routes.SetPath(path)
-	}
+func init() {
+	defaultMux = newMux("/")
 }
 
-func WithHost(host string) MuxOption {
-	return func(r *Mux) {
-		r.host = host
-	}
-}
-
-type Middleware func(http.Handler) http.Handler
-
-func WithMiddleWares(mw ...Middleware) MuxOption {
-	return func(r *Mux) {
-		r.Use(mw...)
+func newMux(path string) *mux {
+	return &mux{
+		path:     path,
+		handlers: make(map[string]HandlerType),
+		routes:   limi.NewRouter(path),
 	}
 }
 

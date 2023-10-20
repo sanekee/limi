@@ -117,12 +117,12 @@ func TestMux(t *testing.T) {
 		}
 		mux := newMux("/")
 		mux.AddHandler("/foo", HandlerType{
-			Methods: map[string]http.Handler{
+			Handlers: map[string]http.Handler{
 				"GET": http.HandlerFunc(fooHandler),
 			},
 		})
 		mux.AddHandler("/bar", HandlerType{
-			Methods: map[string]http.Handler{
+			Handlers: map[string]http.Handler{
 				"GET": http.HandlerFunc(barHandler),
 			},
 		})
@@ -162,12 +162,12 @@ func TestMux(t *testing.T) {
 		}
 		mux := newMux("/")
 		mux.AddHandler("/foo", HandlerType{
-			Methods: map[string]http.Handler{
+			Handlers: map[string]http.Handler{
 				"GET": http.HandlerFunc(fooHandler),
 			},
 		})
 		mux.AddHandler("/foo/bar", HandlerType{
-			Methods: map[string]http.Handler{
+			Handlers: map[string]http.Handler{
 				"GET": http.HandlerFunc(barHandler),
 			},
 		})
