@@ -1,6 +1,7 @@
 package limi
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -32,11 +33,13 @@ func AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) {
 
 	var hPath = ""
 	var pathDef bool
-	field, ok := baseRT.FieldByName("limi")
-	if ok {
-		if p, ok := field.Tag.Lookup("path"); ok {
-			hPath = p
-			pathDef = true
+	if baseRT.Kind() == reflect.Struct {
+		field, ok := baseRT.FieldByName("limi")
+		if ok {
+			if p, ok := field.Tag.Lookup("path"); ok {
+				hPath = p
+				pathDef = true
+			}
 		}
 	}
 
@@ -55,7 +58,7 @@ func AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) {
 	for i := 0; i < rt.NumMethod(); i++ {
 		m := rt.Method(i)
 		lName := strings.ToLower(m.Name)
-		if isHTTPHandler(m.Func) {
+		if isHTTPHandlerProducer(m.Func) {
 			vs := m.Func.Call([]reflect.Value{rv})
 			v := vs[0]
 			if v.Kind() == reflect.Func {
@@ -63,8 +66,13 @@ func AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) {
 					v.Call([]reflect.Value{reflect.ValueOf(w), reflect.ValueOf(req)})
 				})
 			}
+		} else if isHTTPHandlerMethod(m.Func) {
+			methods[lName] = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				m.Func.Call([]reflect.Value{rv, reflect.ValueOf(w), reflect.ValueOf(req)})
+			})
 		}
 	}
+
 	if len(methods) > 0 {
 		defaultMux.handlers[hPath] = HandlerType{
 			Handlers:    methods,
@@ -144,7 +152,8 @@ func newMux(path string) *mux {
 	}
 }
 
-func isHTTPHandler(v reflect.Value) bool {
+// isHTTPHandlerProducer check if the function produces a http.HandlerFunc
+func isHTTPHandlerProducer(v reflect.Value) bool {
 	if v.Kind() != reflect.Func {
 		return false
 	}
@@ -159,9 +168,33 @@ func isHTTPHandler(v reflect.Value) bool {
 		return false
 	}
 
-	handlerFn := func(http.ResponseWriter, *http.Request) {}
-	ht := reflect.TypeOf(handlerFn)
+	ht := reflect.TypeOf(func(http.ResponseWriter, *http.Request) {})
 
-	chk := of.AssignableTo(ht)
-	return chk
+	return of.AssignableTo(ht)
+}
+
+// isHTTPHandlerMethod check if the method is a http.HandlerFunc
+func isHTTPHandlerMethod(v reflect.Value) bool {
+	if v.Kind() != reflect.Func {
+		return false
+	}
+
+	vt := v.Type()
+
+	fmt.Println(v.String(), vt.NumIn(), vt.NumOut())
+	if vt.NumIn() != 3 {
+		return false
+	}
+
+	ht := reflect.TypeOf(func(http.ResponseWriter, *http.Request) {})
+	i1 := vt.In(1)
+	i2 := vt.In(2)
+
+	c1 := ht.In(0)
+	c2 := ht.In(1)
+
+	return i1.Kind() == c1.Kind() &&
+		i2.Kind() == c2.Kind() &&
+		i1.Implements(c1) &&
+		i2.AssignableTo(c2)
 }
