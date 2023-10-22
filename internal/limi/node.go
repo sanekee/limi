@@ -7,7 +7,9 @@ import (
 	"sort"
 )
 
-type Handle any
+type Handle interface {
+	IsPartial() bool
+}
 
 type Node struct {
 	children nodes
@@ -15,7 +17,7 @@ type Node struct {
 	matcher  Matcher
 }
 
-func (n *Node) Insert(str string, h any) error {
+func (n *Node) Insert(str string, h Handle) error {
 	if str == "" {
 		return errors.New(ErrInvalidInput)
 	}
@@ -131,31 +133,38 @@ func (n *Node) walk(level int, fn func(level int, str string, h any)) {
 	}
 }
 
-func (n *Node) Lookup(ctx context.Context, str string) any {
+func (n *Node) Lookup(ctx context.Context, str string) (Handle, string) {
 	return lookup(ctx, n, str)
+
 }
 
-func lookup(ctx context.Context, n *Node, str string) any {
+func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 	if str == "" {
-		return nil
+		return nil, ""
 	}
 
-	isMatched, matched, trail1 := n.matcher.Match(ctx, str)
+	isMatched, matched, trail := n.matcher.Match(ctx, str)
 	if isMatched && n.handle != nil {
-		return n.handle
+		return n.handle, trail
 	}
 
 	if len(matched) == len(str) {
-		return nil
+		return nil, ""
 	}
 
 	for _, nn := range n.children {
-		h := lookup(ctx, nn, trail1)
+		h, trail := lookup(ctx, nn, trail)
 		if h != nil {
-			return h
+			return h, trail
 		}
 	}
-	return nil
+
+	if n.handle != nil &&
+		n.handle.IsPartial() &&
+		matched == n.matcher.Data() {
+		return n.handle, trail
+	}
+	return nil, ""
 
 }
 

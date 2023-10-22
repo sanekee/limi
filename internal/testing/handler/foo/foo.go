@@ -68,3 +68,21 @@ func (f *FooPtrHdl) Get() http.HandlerFunc {
 		w.Write([]byte("foo"))
 	}
 }
+
+type Foo1 struct{}
+
+func (f Foo1) Get() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("foo1"))
+	}
+}
+
+type Foo2 struct{}
+
+func (f Foo2) Get() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("foo2"))
+	}
+}
