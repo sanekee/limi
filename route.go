@@ -11,7 +11,7 @@ import (
 
 type Handler any
 
-type handlerType struct {
+type httpHandler struct {
 	// Map of HTTP Handlers by Methods
 	handlers map[string]http.Handler
 
@@ -129,6 +129,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	handler.ServeHTTP(w, req)
 }
 
+// AddHandler adds handler with optional middleware
+// handler's path is automatically discovered from
+//   - a 'path' tag in a field named 'limi'
+//   - or assigned based on the package path after a 'handler' directory
+//
+// handler's methods fulfill the http.HandlerFunc interface are automatically added
 func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) error {
 	rt := reflect.TypeOf(handler)
 	baseRT := rt
@@ -180,7 +186,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	}
 
 	if len(methods) > 0 {
-		return r.Insert(handlerType{
+		return r.insertHandler(httpHandler{
 			handlers:    methods,
 			middlewares: mws,
 			path:        hPath,
@@ -189,8 +195,9 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	return nil
 }
 
+// AddHandlerFunc adds http handler with path and method
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
-	return r.Insert(handlerType{
+	return r.insertHandler(httpHandler{
 		handlers: map[string]http.Handler{
 			method: fn,
 		},
@@ -199,6 +206,7 @@ func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc,
 	})
 }
 
+// AddRouter adds a sub router
 func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) {
 	nr := NewRouter(r.buildPath(path))
 	nr.isSubRoute = true
@@ -210,28 +218,14 @@ func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) 
 		opt(nr)
 	}
 
-	if err := r.InsertRouter(nr); err != nil {
+	if err := r.insertRouter(nr); err != nil {
 		return nil, err
 	}
 
 	return nr, nil
 }
 
-// Insert inserts new handler by path
-func (r *Router) Insert(h handlerType) error {
-	path := h.path
-	if !r.isSubRoute {
-		path = r.buildPath(h.path)
-	}
-	mws := append(r.middlewares, h.middlewares...)
-	handlers := buildHandlers(mws, h.handlers)
-	return r.node.Insert(path, handlers)
-}
-
-func (r *Router) InsertRouter(r1 *Router) error {
-	return r.node.Insert(r1.path, r1)
-}
-
+// IsSupportedHost match host with supported host
 func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	if r.host == nil {
 		return true
@@ -244,8 +238,25 @@ func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	return true
 }
 
+// IsPartial implemens Node interface, returning true indicate partial match is return for futher matching
 func (r *Router) IsPartial() bool {
 	return true
+}
+
+// insertHandler inserts new handler
+func (r *Router) insertHandler(h httpHandler) error {
+	path := h.path
+	if !r.isSubRoute {
+		path = r.buildPath(h.path)
+	}
+	mws := append(r.middlewares, h.middlewares...)
+	handlers := buildHandlers(mws, h.handlers)
+	return r.node.Insert(path, handlers)
+}
+
+// insertRouter inserts new router
+func (r *Router) insertRouter(r1 *Router) error {
+	return r.node.Insert(r1.path, r1)
 }
 
 func (r *Router) buildPath(path string) string {
