@@ -36,15 +36,15 @@ func (s *LabelMatcher) Parse(str string) (bool, string, string, string) {
 	if len(str) < 3 ||
 		str[0] != '{' ||
 		str[len(str)-1] != '}' {
-		return false, str, str, ""
+		return false, "", str, "{" + s.data + "}"
 	}
 
-	label := str[1 : len(str)-2]
+	label := str[1 : len(str)-1]
 	if label == s.data {
-		return true, "", "", ""
+		return true, str, "", ""
 	}
 
-	return false, str, str, ""
+	return false, "", str, "{" + s.data + "}"
 }
 
 func (s *LabelMatcher) Data() string {

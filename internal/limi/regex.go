@@ -44,15 +44,15 @@ func (s *RegexpMatcher) Parse(str string) (bool, string, string, string) {
 	if len(str) < 3 ||
 		str[0] != '{' ||
 		str[len(str)-1] != '}' {
-		return false, str, str, ""
+		return false, "", str, "{" + s.label + ":" + s.regexp.String() + "}"
 	}
 
-	label := str[1 : len(str)-2]
+	label := str[1 : len(str)-1]
 	if label == (s.label + ":" + s.regexp.String()) {
-		return true, "", "", ""
+		return true, str, "", ""
 	}
 
-	return false, str, str, ""
+	return false, "", str, "{" + s.label + ":" + s.regexp.String() + "}"
 }
 
 func (s *RegexpMatcher) Data() string {
