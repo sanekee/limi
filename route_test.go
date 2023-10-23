@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/sanekee/limi/internal/testing/handler/foo"
@@ -65,6 +66,85 @@ func TestBuildPath(t *testing.T) {
 	}
 }
 
+func TestPathHelpers(t *testing.T) {
+	type test struct {
+		input    string
+		expected string
+	}
+
+	t.Run("ensureLeadingSlash", func(t *testing.T) {
+		tests := []test{
+			{
+				input:    "foo",
+				expected: "/foo",
+			},
+			{
+				input:    "/foo",
+				expected: "/foo",
+			},
+		}
+
+		for _, test := range tests {
+			actual := ensureLeadingSlash(test.input)
+			require.Equal(t, test.expected, actual)
+		}
+	})
+
+	t.Run("removeTraillingSlash", func(t *testing.T) {
+		tests := []test{
+			{
+				input:    "foo/",
+				expected: "foo",
+			},
+			{
+				input:    "foo",
+				expected: "foo",
+			},
+		}
+
+		for _, test := range tests {
+			actual := removeTraillingSlash(test.input)
+			require.Equal(t, test.expected, actual)
+		}
+	})
+
+	t.Run("ensureTrailingSlash", func(t *testing.T) {
+		tests := []test{
+			{
+				input:    "foo",
+				expected: "foo/",
+			},
+			{
+				input:    "foo/",
+				expected: "foo/",
+			},
+		}
+
+		for _, test := range tests {
+			actual := ensureTrailingSlash(test.input)
+			require.Equal(t, test.expected, actual)
+		}
+	})
+
+	t.Run("removeLeadingSlash", func(t *testing.T) {
+		tests := []test{
+			{
+				input:    "/foo",
+				expected: "foo",
+			},
+			{
+				input:    "foo",
+				expected: "foo",
+			},
+		}
+
+		for _, test := range tests {
+			actual := removeLeadingSlash(test.input)
+			require.Equal(t, test.expected, actual)
+		}
+	})
+}
+
 func TestFindHandlerPath(t *testing.T) {
 	type test struct {
 		pkgPath  string
@@ -95,6 +175,117 @@ func TestFindHandlerPath(t *testing.T) {
 		})
 	}
 
+}
+
+func TestIsHTTPHandlerProducer(t *testing.T) {
+	t.Run("handler is http handler func producer", func(t *testing.T) {
+		fn := func() http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {})
+		}
+		v := reflect.ValueOf(fn)
+
+		actual := isHTTPHandlerProducer(v)
+		require.True(t, actual)
+	})
+
+	t.Run("func is http handler func producer", func(t *testing.T) {
+		fn := func() http.HandlerFunc {
+			return func(w http.ResponseWriter, req *http.Request) {}
+		}
+		v := reflect.ValueOf(fn)
+
+		actual := isHTTPHandlerProducer(v)
+		require.True(t, actual)
+	})
+
+	t.Run("returning func is not http handler func producer", func(t *testing.T) {
+		fn := func() func() {
+			return func() {}
+		}
+		v := reflect.ValueOf(fn)
+
+		actual := isHTTPHandlerProducer(v)
+		require.False(t, actual)
+	})
+
+	t.Run("func is not http handler func producer", func(t *testing.T) {
+		fn := func() {}
+
+		v := reflect.ValueOf(fn)
+
+		actual := isHTTPHandlerProducer(v)
+		require.False(t, actual)
+	})
+
+	t.Run("struct is not http handler func producer", func(t *testing.T) {
+		st := struct{}{}
+		v := reflect.ValueOf(st)
+
+		actual := isHTTPHandlerProducer(v)
+		require.False(t, actual)
+	})
+}
+
+func TestIsHTTPHandlerMethod(t *testing.T) {
+	t.Run("method is http handler method ", func(t *testing.T) {
+		st := testSt{}
+
+		v := reflect.ValueOf(st.Get)
+
+		actual := isHTTPHandlerMethod(v)
+		require.True(t, actual)
+	})
+
+	t.Run("method is http handler method ", func(t *testing.T) {
+		st := testSt{}
+
+		vSt := reflect.TypeOf(st)
+		mGet, ok := vSt.MethodByName("Get")
+		require.True(t, ok)
+
+		actual := isHTTPHandlerMethod(mGet.Func)
+		require.True(t, actual)
+	})
+
+	t.Run("method is not http handler method ", func(t *testing.T) {
+		st := testSt{}
+
+		v := reflect.ValueOf(st.Fetch)
+
+		actual := isHTTPHandlerMethod(v)
+		require.False(t, actual)
+	})
+
+	t.Run("struct is not http handler func producer", func(t *testing.T) {
+		st := struct{}{}
+		v := reflect.ValueOf(st)
+
+		actual := isHTTPHandlerMethod(v)
+		require.False(t, actual)
+	})
+}
+
+type testSt struct{}
+
+func (t testSt) Get(http.ResponseWriter, *http.Request) {}
+
+func (t testSt) Fetch() {}
+
+func TestParseHost(t *testing.T) {
+	t.Run("has port", func(t *testing.T) {
+		actual := parseHost("host:8080")
+		require.Equal(t, "host", actual)
+	})
+
+	t.Run("no colon", func(t *testing.T) {
+		actual := parseHost("host")
+		require.Equal(t, "host", actual)
+	})
+
+	t.Run("empty string", func(t *testing.T) {
+		actual := parseHost("")
+		require.Equal(t, "", actual)
+	})
 }
 
 func TestAddHandler(t *testing.T) {
@@ -230,6 +421,39 @@ func TestAddHandler(t *testing.T) {
 
 		count = rec.Result().Header.Get("X-Count-Total")
 		require.Equal(t, "2", count)
+	})
+
+	t.Run("method not allowed", func(t *testing.T) {
+		r := NewRouter("/")
+
+		testFoo := foo.FooHdl{}
+		r.AddHandler(testFoo)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodDelete, "http://localhost:9090/foo/foohdl", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusMethodNotAllowed, rec.Result().StatusCode)
+		require.Contains(t, rec.Header().Get("Allow"), "GET")
+	})
+
+	t.Run("custom method not allowed", func(t *testing.T) {
+		r := NewRouter("/",
+			WithMethodNotAllowedHandler(func(m ...string) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					require.Contains(t, m, "GET")
+				})
+			}))
+
+		testFoo := foo.FooHdl{}
+		r.AddHandler(testFoo)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodDelete, "http://localhost:9090/foo/foohdl", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusMethodNotAllowed, rec.Result().StatusCode)
 	})
 }
 

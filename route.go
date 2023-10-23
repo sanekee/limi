@@ -2,7 +2,6 @@ package limi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -80,7 +79,7 @@ func WithNotFoundHandler(h http.Handler) RouterOptions {
 }
 
 // WithMethodNotAllowedHandler set the method not allowed handler with list of allowed methods
-func SetMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
+func WithMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
 	return func(r *Router) {
 		r.methodNotAllowedHandler = h
 	}
@@ -356,13 +355,17 @@ func isHTTPHandlerProducer(v reflect.Value) bool {
 	}
 
 	of := vt.Out(0)
-	if of.Kind() != reflect.Func {
-		return false
+	if of.Kind() == reflect.Func {
+		ht := reflect.TypeOf(func(http.ResponseWriter, *http.Request) {})
+		return of.AssignableTo(ht)
 	}
 
-	ht := reflect.TypeOf(func(http.ResponseWriter, *http.Request) {})
+	if of.Kind() == reflect.Interface {
+		ht := reflect.TypeOf(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		return ht.Implements(of)
+	}
+	return false
 
-	return of.AssignableTo(ht)
 }
 
 // isHTTPHandlerMethod check if the method is a http.HandlerFunc
@@ -373,14 +376,14 @@ func isHTTPHandlerMethod(v reflect.Value) bool {
 
 	vt := v.Type()
 
-	fmt.Println(v.String(), vt.NumIn(), vt.NumOut())
-	if vt.NumIn() != 3 {
+	fIdx := vt.NumIn() - 2
+	if fIdx < 0 || fIdx > 1 {
 		return false
 	}
 
 	ht := reflect.TypeOf(func(http.ResponseWriter, *http.Request) {})
-	i1 := vt.In(1)
-	i2 := vt.In(2)
+	i1 := vt.In(fIdx)
+	i2 := vt.In(fIdx + 1)
 
 	c1 := ht.In(0)
 	c2 := ht.In(1)
