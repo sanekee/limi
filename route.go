@@ -2,6 +2,8 @@ package limi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -35,7 +37,7 @@ type Router struct {
 }
 
 // NewRouter returns Router with path preset
-func NewRouter(path string, opts ...RouterOptions) *Router {
+func NewRouter(path string, opts ...RouterOptions) (*Router, error) {
 	r := &Router{
 		path:                    path,
 		node:                    &limi.Node{},
@@ -43,45 +45,50 @@ func NewRouter(path string, opts ...RouterOptions) *Router {
 		methodNotAllowedHandler: methodNotAllowedHandler,
 	}
 	for _, opt := range opts {
-		opt(r)
+		if err := opt(r); err != nil {
+			return nil, fmt.Errorf("error creating router %w", err)
+		}
 	}
-	return r
+	return r, nil
 }
 
-type RouterOptions func(r *Router)
+type RouterOptions func(r *Router) error
 
 // WithHost set Router's host
 func WithHost(host string) RouterOptions {
-	return func(r *Router) {
+	return func(r *Router) error {
 		if r.isSubRoute {
-			return
+			return errors.New(limi.ErrUnsupportedOperation)
 		}
 		if r.host == nil {
 			n := &limi.Node{}
 			r.host = n
 		}
-		r.host.Insert(host, hostHandler{})
+		return r.host.Insert(host, hostHandler{})
 	}
 }
 
 // WithMiddlewares set Router's middlewares
 func WithMiddlewares(mws ...func(http.Handler) http.Handler) RouterOptions {
-	return func(r *Router) {
+	return func(r *Router) error {
 		r.middlewares = append(r.middlewares, mws...)
+		return nil
 	}
 }
 
 // WithNotFoundHandler set the not found handler
 func WithNotFoundHandler(h http.Handler) RouterOptions {
-	return func(r *Router) {
+	return func(r *Router) error {
 		r.notFoundHandler = h
+		return nil
 	}
 }
 
 // WithMethodNotAllowedHandler set the method not allowed handler with list of allowed methods
 func WithMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
-	return func(r *Router) {
+	return func(r *Router) error {
 		r.methodNotAllowedHandler = h
+		return nil
 	}
 }
 
@@ -208,18 +215,26 @@ func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc,
 
 // AddRouter adds a sub router
 func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) {
-	nr := NewRouter(r.buildPath(path))
+	nr, err := NewRouter(r.buildPath(path))
+	if err != nil {
+		return nil, err
+	}
+
 	nr.isSubRoute = true
 
 	fn := WithMiddlewares(r.middlewares...)
-	fn(nr)
+	if err := fn(nr); err != nil {
+		return nil, fmt.Errorf("error applying middleware option to sub route %w", err)
+	}
 
 	for _, opt := range opts {
-		opt(nr)
+		if err := opt(nr); err != nil {
+			return nil, fmt.Errorf("error applying router option to sub route %w", err)
+		}
 	}
 
 	if err := r.insertRouter(nr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error inserting router %w", err)
 	}
 
 	return nr, nil

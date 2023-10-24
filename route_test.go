@@ -290,10 +290,12 @@ func TestParseHost(t *testing.T) {
 
 func TestAddHandler(t *testing.T) {
 	t.Run("add with tag", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFoo := foo.Foo{}
-		r.AddHandler(testFoo)
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
@@ -307,10 +309,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("add relative path with tag", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFooRel := foo.FooRel{}
-		r.AddHandler(testFooRel)
+		err = r.AddHandler(testFooRel)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/bar", nil)
@@ -324,10 +328,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("add with package path", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFooPkg := foo.FooPkg{}
-		r.AddHandler(testFooPkg)
+		err = r.AddHandler(testFooPkg)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/foopkg", nil)
@@ -341,10 +347,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("add stateful handler", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFooPtr := &foo.FooPtr{}
-		r.AddHandler(testFooPtr)
+		err = r.AddHandler(testFooPtr)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/fooptr", nil)
@@ -374,10 +382,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("add with handler method", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFoo := foo.FooHdl{}
-		r.AddHandler(testFoo)
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/foohdl", nil)
@@ -391,10 +401,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("add stateful method handler", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFoo := &foo.FooPtrHdl{}
-		r.AddHandler(testFoo)
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/foo/fooptrhdl", nil)
@@ -424,10 +436,12 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("method not allowed", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
 
 		testFoo := foo.FooHdl{}
-		r.AddHandler(testFoo)
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodDelete, "http://localhost:9090/foo/foohdl", nil)
@@ -438,16 +452,18 @@ func TestAddHandler(t *testing.T) {
 	})
 
 	t.Run("custom method not allowed", func(t *testing.T) {
-		r := NewRouter("/",
+		r, err := NewRouter("/",
 			WithMethodNotAllowedHandler(func(m ...string) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					require.Contains(t, m, "GET")
 				})
 			}))
+		require.NoError(t, err)
 
 		testFoo := foo.FooHdl{}
-		r.AddHandler(testFoo)
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodDelete, "http://localhost:9090/foo/foohdl", nil)
@@ -459,13 +475,15 @@ func TestAddHandler(t *testing.T) {
 
 func TestAddRouter(t *testing.T) {
 	t.Run("add sub route", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
 		r1, err := r.AddRouter("/baz")
 		require.NoError(t, err)
 
 		err = r1.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo"))
+			w.Write([]byte("foo")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -481,13 +499,15 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("add sub route & handler", func(t *testing.T) {
-		r := NewRouter("/")
-		_, err := r.AddRouter("/foo")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		_, err = r.AddRouter("/foo")
 		require.NoError(t, err)
 
 		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo"))
+			w.Write([]byte("foo")) // nolint:errcheck
 		})
 		require.Error(t, err)
 
@@ -499,10 +519,12 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("add handler & sub route", func(t *testing.T) {
-		r := NewRouter("/")
-		err := r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo"))
+			w.Write([]byte("foo")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -521,19 +543,21 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("add sub route & handler under subroute", func(t *testing.T) {
-		r := NewRouter("/")
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
 		r1, err := r.AddRouter("/foo")
 		require.NoError(t, err)
 
 		err = r1.AddHandlerFunc("/baz", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo/baz"))
+			w.Write([]byte("foo/baz")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
 		err = r.AddHandlerFunc("/foo/bar", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo/bar"))
+			w.Write([]byte("foo/bar")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -559,10 +583,12 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("add sub route name part of longer handler", func(t *testing.T) {
-		r := NewRouter("/")
-		err := r.AddHandlerFunc("/foooo/bar", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foooo/bar", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foooo/bar"))
+			w.Write([]byte("foooo/bar")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -571,7 +597,7 @@ func TestAddRouter(t *testing.T) {
 
 		err = r1.AddHandlerFunc("/baz", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo/baz"))
+			w.Write([]byte("foo/baz")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -598,12 +624,14 @@ func TestAddRouter(t *testing.T) {
 
 	t.Run("add middleware", func(t *testing.T) {
 		var middlewareAct []string
-		r := NewRouter("/", WithMiddlewares(func(next http.Handler) http.Handler {
+		r, err := NewRouter("/", WithMiddlewares(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				middlewareAct = append(middlewareAct, "middleware1")
 				next.ServeHTTP(w, req)
 			})
 		}))
+		require.NoError(t, err)
+
 		r1, err := r.AddRouter("/foo", WithMiddlewares(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				middlewareAct = append(middlewareAct, "middleware2")
@@ -614,7 +642,7 @@ func TestAddRouter(t *testing.T) {
 
 		err = r1.AddHandlerFunc("/bar", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("foo"))
+			w.Write([]byte("foo")) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -632,12 +660,13 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("host", func(t *testing.T) {
-		r := NewRouter("/", WithHost("abc"))
+		r, err := NewRouter("/", WithHost("abc"))
+		require.NoError(t, err)
 
-		err := r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			hostname := parseHost(req.URL.Host)
-			w.Write([]byte("foo" + ":" + hostname))
+			w.Write([]byte("foo" + ":" + hostname)) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -660,15 +689,16 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("multi host", func(t *testing.T) {
-		r := NewRouter("/",
+		r, err := NewRouter("/",
 			WithHost("host1"),
 			WithHost("host2"),
 		)
+		require.NoError(t, err)
 
-		err := r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			hostname := parseHost(req.URL.Host)
-			w.Write([]byte("foo" + ":" + hostname))
+			w.Write([]byte("foo" + ":" + hostname)) // nolint:errcheck
 		})
 		require.NoError(t, err)
 
@@ -695,14 +725,15 @@ func TestAddRouter(t *testing.T) {
 	})
 
 	t.Run("regex host", func(t *testing.T) {
-		r := NewRouter("/",
+		r, err := NewRouter("/",
 			WithHost("{host:[^.]+.hostname.com}"),
 		)
+		require.NoError(t, err)
 
-		err := r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			hostname := parseHost(req.URL.Host)
-			w.Write([]byte("foo" + ":" + hostname))
+			w.Write([]byte("foo" + ":" + hostname)) // nolint:errcheck
 		})
 		require.NoError(t, err)
 

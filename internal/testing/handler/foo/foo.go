@@ -10,18 +10,18 @@ type FooPkg struct{}
 func (f FooPkg) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo"))
+		w.Write([]byte("foo")) //nolint:errcheck
 	}
 }
 
 type Foo struct {
-	limi struct{} `path:"/foo"`
+	limi struct{} `path:"/foo"` //lint:ignore U1000 field parsed by limi
 }
 
 func (f Foo) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo"))
+		w.Write([]byte("foo")) //nolint:errcheck
 	}
 }
 
@@ -34,18 +34,18 @@ func (f *FooPtr) Get() http.HandlerFunc {
 		f.state = f.state + 1
 		w.Header().Add("X-Count-Total", fmt.Sprintf("%d", f.state))
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo"))
+		w.Write([]byte("foo")) //nolint:errcheck
 	}
 }
 
 type FooRel struct {
-	limi struct{} `path:"bar"`
+	limi struct{} `path:"bar"` //lint:ignore U1000 field parsed by limi
 }
 
 func (f FooRel) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo"))
+		w.Write([]byte("foo")) //nolint:errcheck
 	}
 }
 
@@ -53,7 +53,7 @@ type FooHdl struct{}
 
 func (f FooHdl) Get(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("foo"))
+	w.Write([]byte("foo")) //nolint:errcheck
 }
 
 type FooPtrHdl struct {
@@ -65,7 +65,7 @@ func (f *FooPtrHdl) Get() http.HandlerFunc {
 		f.state = f.state + 1
 		w.Header().Add("X-Count-Total", fmt.Sprintf("%d", f.state))
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo"))
+		w.Write([]byte("foo")) //nolint:errcheck
 	}
 }
 
@@ -74,7 +74,7 @@ type Foo1 struct{}
 func (f Foo1) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo1"))
+		w.Write([]byte("foo1")) //nolint:errcheck
 	}
 }
 
@@ -83,6 +83,6 @@ type Foo2 struct{}
 func (f Foo2) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo2"))
+		w.Write([]byte("foo2")) //nolint:errcheck
 	}
 }

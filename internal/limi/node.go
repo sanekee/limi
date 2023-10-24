@@ -112,7 +112,7 @@ func insert(n *Node, p Parser) (*Node, string, error) {
 		newNode := &Node{matcher: NewStringMatcher(str)}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
-		str = ""
+
 		return newNode, "", nil
 	}
 
