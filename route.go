@@ -232,10 +232,7 @@ func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	}
 
 	h, _ := r.host.Lookup(ctx, host)
-	if h == nil {
-		return false
-	}
-	return true
+	return h != nil
 }
 
 // IsPartial implemens Node interface, returning true indicate partial match is return for futher matching
