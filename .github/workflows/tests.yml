@@ -42,6 +42,7 @@ jobs:
           path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
       - name: Test
         run: |
+          go get -d -t ./...
           go test $(go list ./... | grep -v /example/)
 
   integration-test:
