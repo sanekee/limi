@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
+	_ "net/http/pprof" // ensure import
 	"reflect"
 	"strings"
 
@@ -17,9 +17,6 @@ type Handler any
 type httpMethodHandler struct {
 	// Map of HTTP Handlers by Methods
 	handlers map[string]http.Handler
-
-	// List of middlewares
-	middlewares []func(http.Handler) http.Handler
 }
 
 // Router is a http router
@@ -87,6 +84,21 @@ func WithNotFoundHandler(h http.Handler) RouterOptions {
 func WithMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
 	return func(r *Router) error {
 		r.methodNotAllowedHandler = h
+		return nil
+	}
+}
+
+// WithProfiler add golang profiler reports under /debug/pprof/
+func WithProfiler() RouterOptions {
+	return func(r *Router) error {
+		if err := r.AddHTTPHandler("/debug/pprof/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			req = req.Clone(req.Context())
+			path, _ := strings.CutPrefix(req.URL.Path, r.path)
+			req.URL.Path = ensureLeadingSlash(path)
+			http.DefaultServeMux.ServeHTTP(w, req)
+		})); err != nil {
+			return err
+		}
 		return nil
 	}
 }
@@ -182,21 +194,20 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 			vs := m.Func.Call([]reflect.Value{rv})
 			v := vs[0]
 			if v.Kind() == reflect.Func {
-				methods[lName] = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				methods[lName] = chainMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 					v.Call([]reflect.Value{reflect.ValueOf(w), reflect.ValueOf(req)})
-				})
+				}), mws...)
 			}
 		} else if isHTTPHandlerMethod(m.Func) {
-			methods[lName] = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			methods[lName] = chainMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				m.Func.Call([]reflect.Value{rv, reflect.ValueOf(w), reflect.ValueOf(req)})
-			})
+			}), mws...)
 		}
 	}
 
 	if len(methods) > 0 {
 		return r.insertMethodHandler(hPath, httpMethodHandler{
-			handlers:    methods,
-			middlewares: mws,
+			handlers: methods,
 		})
 	}
 	return nil
@@ -216,22 +227,22 @@ func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
 	return r.insertMethodHandler(path, httpMethodHandler{
 		handlers: map[string]http.Handler{
-			method: fn,
+			method: chainMiddlewares(fn, mws...),
 		},
-		middlewares: mws,
 	})
 }
 
 // AddHTTPHandler adds a catch all http handler with path
 func (r *Router) AddHTTPHandler(path string, h http.Handler, mws ...func(http.Handler) http.Handler) error {
 	path = r.buildPath(path)
-	h = chainMiddlewares(h, r.middlewares...)
+	middlewares := append(r.middlewares, mws...)
+	h = chainMiddlewares(h, middlewares...)
 	return r.node.Insert(path, limi.HTTPHandler(h.ServeHTTP))
 }
 
 // AddRouter adds a sub router
 func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) {
-	nr, err := NewRouter(r.buildPath(path))
+	nr, err := NewRouter(path)
 	if err != nil {
 		return nil, err
 	}
@@ -266,15 +277,6 @@ func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	return h != nil
 }
 
-func WithProfiler() RouterOptions {
-	return func(r *Router) error {
-		if err := r.AddHTTPHandler("/debug/pprof", pprofHandler{}); err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
 // IsPartial implemens Node interface, returning true indicate partial match is return for futher matching
 func (r *Router) IsPartial() bool {
 	return true
@@ -285,14 +287,13 @@ func (r *Router) insertMethodHandler(path string, h httpMethodHandler) error {
 	if !r.isSubRoute {
 		path = r.buildPath(path)
 	}
-	mws := append(r.middlewares, h.middlewares...)
-	handlers := buildHandlers(mws, h.handlers)
+	handlers := buildHandlers(r.middlewares, h.handlers)
 	return r.node.Insert(path, handlers)
 }
 
 // insertRouter inserts new router
 func (r *Router) insertRouter(r1 *Router) error {
-	return r.node.Insert(r1.path, r1)
+	return r.node.Insert(r.buildPath(r1.path), r1)
 }
 
 func (r *Router) buildPath(path string) string {
@@ -458,10 +459,4 @@ type hostHandler struct{}
 
 func (h hostHandler) IsPartial() bool {
 	return false
-}
-
-type pprofHandler struct{}
-
-func (p pprofHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	pprof.Index(w, req)
 }

@@ -822,7 +822,7 @@ func TestAddRouter(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/", nil)
 		r.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
 
@@ -831,9 +831,48 @@ func TestAddRouter(t *testing.T) {
 		require.NotEmpty(t, body)
 
 		rec = httptest.NewRecorder()
-		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/profile", nil)
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/heap?seconds=1", nil)
 		r.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		contentType := rec.Header().Get("Content-Type")
+		require.Equal(t, "application/octet-stream", contentType)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body)
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/profile?seconds=1", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		contentType = rec.Header().Get("Content-Type")
+		require.Equal(t, "application/octet-stream", contentType)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body)
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/trace?seconds=1", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		contentType = rec.Header().Get("Content-Type")
+		require.Equal(t, "application/octet-stream", contentType)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body)
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/symbol?12345678", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		contentType = rec.Header().Get("Content-Type")
+		require.Equal(t, "text/plain; charset=utf-8", contentType)
 
 		body, err = io.ReadAll(rec.Body)
 		require.NoError(t, err)
