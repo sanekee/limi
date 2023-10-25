@@ -471,6 +471,36 @@ func TestAddHandler(t *testing.T) {
 		r.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusMethodNotAllowed, rec.Result().StatusCode)
 	})
+
+	t.Run("add handlers", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		testFoo := foo.Foo{}
+		testFooRel := foo.FooRel{}
+		err = r.AddHandlers([]Handler{testFoo, testFooRel})
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/bar", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
 }
 
 func TestAddRouter(t *testing.T) {
@@ -756,5 +786,34 @@ func TestAddRouter(t *testing.T) {
 		body, err = io.ReadAll(rec.Body)
 		require.NoError(t, err)
 		require.Equal(t, "foo:subdomain2.hostname.com", string(body))
+	})
+
+	t.Run("add route path", func(t *testing.T) {
+		r, err := NewRouter("/base")
+		require.NoError(t, err)
+
+		r1, err := r.AddRouter("/baz")
+		require.NoError(t, err)
+
+		err = r1.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("foo")) // nolint:errcheck
+		})
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/baz/foo", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusNotFound, rec.Result().StatusCode)
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/base/baz/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
 	})
 }

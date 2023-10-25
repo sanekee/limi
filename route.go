@@ -202,6 +202,16 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	return nil
 }
 
+// AddHandlers adds multiple handlers with the same middlewares
+func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.Handler) error {
+	for _, h := range handlers {
+		if err := r.AddHandler(h, mws...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AddHandlerFunc adds http handler with path and method
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
 	return r.insertHandler(httpHandler{
