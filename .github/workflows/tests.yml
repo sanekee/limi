@@ -40,6 +40,8 @@ jobs:
         env:
           working-directory: ${{ github.workspace }}/src
         run: |
+          pwd -P
+          ls -lrt
           go test ./...
       - name: Integration Test Prep
         env:
