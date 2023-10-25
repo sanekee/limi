@@ -28,5 +28,7 @@ func main() {
 	}
 
 	fmt.Println("rest example listening on :3333")
-	http.ListenAndServe(":3333", r)
+	if err := http.ListenAndServe(":3333", r); err != nil {
+		panic(err)
+	}
 }

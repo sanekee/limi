@@ -24,7 +24,7 @@ func (f Foo) Get() http.HandlerFunc {
 }
 
 type FooDef struct {
-	limi struct{} `path:"/foo"`
+	limi struct{} `path:"/foo"` //lint:ignore U1000 field parsed by limi
 }
 
 func (f FooDef) Get() http.HandlerFunc {

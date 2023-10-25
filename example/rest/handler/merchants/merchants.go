@@ -35,7 +35,7 @@ func (m Merchants) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	w.Write(body) // nolint:errcheck
 }
 
 func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
@@ -64,7 +64,7 @@ func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(mBody)
+	w.Write(mBody) // nolint:errcheck
 
 }
 
@@ -93,7 +93,7 @@ func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	w.Write(body) // nolint:errcheck
 }
 
 func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
@@ -128,7 +128,7 @@ func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(mBody)
+	w.Write(mBody) // nolint:errcheck
 
 }
 

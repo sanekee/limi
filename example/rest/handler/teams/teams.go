@@ -36,7 +36,7 @@ func (t Teams) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	w.Write(body) // nolint:errcheck
 }
 
 func (t Teams) Post(w http.ResponseWriter, req *http.Request) {
@@ -65,7 +65,7 @@ func (t Teams) Post(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(mBody)
+	w.Write(mBody) // nolint:errcheck
 
 }
 
@@ -94,7 +94,7 @@ func (t Team) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	w.Write(body) // nolint:errcheck
 }
 
 func (t Team) Put(w http.ResponseWriter, req *http.Request) {
@@ -129,7 +129,7 @@ func (t Team) Put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(mBody)
+	w.Write(mBody) // nolint:errcheck
 
 }
 
@@ -174,5 +174,5 @@ func (t TeamMerchants) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	w.Write(body) // nolint:errcheck
 }
