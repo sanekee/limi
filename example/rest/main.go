@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
-
 	"rest/db"
-	"rest/handler/merchant"
-	"rest/handler/team"
+	"rest/handler/merchants"
+	"rest/handler/teams"
 
 	"github.com/sanekee/limi"
 )
@@ -19,11 +18,11 @@ func main() {
 
 	dbClient := db.NewMemClient()
 	if err := r.AddHandlers([]limi.Handler{
-		merchant.Merchants{DBClient: dbClient},
-		merchant.Merchant{DBClient: dbClient},
-		team.Teams{DBClient: dbClient},
-		team.Team{DBClient: dbClient},
-		team.TeamMerchants{DBClient: dbClient},
+		merchants.Merchants{DBClient: dbClient},
+		merchants.Merchant{DBClient: dbClient},
+		teams.Teams{DBClient: dbClient},
+		teams.Team{DBClient: dbClient},
+		teams.TeamMerchants{DBClient: dbClient},
 	}); err != nil {
 		panic(err)
 	}

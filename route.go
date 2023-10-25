@@ -14,10 +14,8 @@ import (
 
 type Handler any
 
-type httpMethodHandler struct {
-	// Map of HTTP Handlers by Methods
-	handlers map[string]http.Handler
-}
+// Map of HTTP Handlers by Methods
+type httpMethodHandlers map[string]http.Handler
 
 // Router is a http router
 type Router struct {
@@ -132,7 +130,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	var handler http.Handler
 	switch hh := h.(type) {
-	case handlerMap:
+	case httpMethodHandlers:
 		hdl, ok := hh[req.Method]
 		if !ok {
 			r.methodNotAllowedHandler(hh.keys()...).ServeHTTP(w, req)
@@ -175,18 +173,24 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 		}
 	}
 
+	// if handler's path is not absolute path, prefix with package path after a hander/ subpath
 	if !strings.HasPrefix(hPath, "/") {
+		rtName := strings.ToLower(baseRT.Name())
 		pkgPath := baseRT.PkgPath()
 		pkgPath = removeTraillingSlash(findHandlerPath(pkgPath))
 
 		if !pathDef {
-			hPath = pkgPath + ensureLeadingSlash(strings.ToLower(baseRT.Name()))
+			pkgName := packageName(pkgPath)
+			hPath = pkgPath
+			if pkgName != rtName {
+				hPath += ensureLeadingSlash(rtName)
+			}
 		} else {
 			hPath = pkgPath + ensureLeadingSlash(hPath)
 		}
 	}
 
-	methods := make(map[string]http.Handler)
+	methods := make(httpMethodHandlers)
 	for i := 0; i < rt.NumMethod(); i++ {
 		m := rt.Method(i)
 		lName := strings.ToUpper(m.Name)
@@ -206,9 +210,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	}
 
 	if len(methods) > 0 {
-		return r.insertMethodHandler(hPath, httpMethodHandler{
-			handlers: methods,
-		})
+		return r.insertMethodHandler(hPath, methods)
 	}
 	return nil
 }
@@ -225,10 +227,8 @@ func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.
 
 // AddHandlerFunc adds http handler with path and method
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
-	return r.insertMethodHandler(path, httpMethodHandler{
-		handlers: map[string]http.Handler{
-			method: chainMiddlewares(fn, mws...),
-		},
+	return r.insertMethodHandler(path, httpMethodHandlers{
+		method: chainMiddlewares(fn, mws...),
 	})
 }
 
@@ -283,11 +283,11 @@ func (r *Router) IsPartial() bool {
 }
 
 // insertMethodHandler inserts new handler
-func (r *Router) insertMethodHandler(path string, h httpMethodHandler) error {
+func (r *Router) insertMethodHandler(path string, h httpMethodHandlers) error {
 	if !r.isSubRoute {
 		path = r.buildPath(path)
 	}
-	handlers := buildHandlers(r.middlewares, h.handlers)
+	handlers := buildHandlers(r.middlewares, h)
 	return r.node.Insert(path, handlers)
 }
 
@@ -300,10 +300,10 @@ func (r *Router) buildPath(path string) string {
 	return buildPath(r.path, path)
 }
 
-func buildHandlers(mws []func(http.Handler) http.Handler, hvs handlerMap) handlerMap {
-	handlers := make(handlerMap)
+func buildHandlers(mws []func(http.Handler) http.Handler, hms httpMethodHandlers) httpMethodHandlers {
+	handlers := hms
 
-	for method, h := range hvs {
+	for method, h := range hms {
 		handlers[method] = chainMiddlewares(h, mws...)
 	}
 	return handlers
@@ -371,6 +371,15 @@ func findHandlerPath(path string) string {
 	return strings.Join(arrPath[1:], "/")
 }
 
+func packageName(path string) string {
+	idx := strings.LastIndexByte(removeTraillingSlash(path), '/')
+	if idx < 0 {
+		return path
+	}
+
+	return path[idx+1:]
+}
+
 func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		for _, m := range allowedMethods {
@@ -380,9 +389,7 @@ func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 	})
 }
 
-type handlerMap map[string]http.Handler
-
-func (h handlerMap) keys() []string {
+func (h httpMethodHandlers) keys() []string {
 	var keys []string
 	for k := range h {
 		keys = append(keys, k)
@@ -390,7 +397,7 @@ func (h handlerMap) keys() []string {
 	return keys
 }
 
-func (h handlerMap) IsPartial() bool {
+func (h httpMethodHandlers) IsPartial() bool {
 	return false
 }
 

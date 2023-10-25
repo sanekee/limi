@@ -289,11 +289,30 @@ func TestParseHost(t *testing.T) {
 }
 
 func TestAddHandler(t *testing.T) {
-	t.Run("add with tag", func(t *testing.T) {
+	t.Run("add with default package handler", func(t *testing.T) {
 		r, err := NewRouter("/")
 		require.NoError(t, err)
 
 		testFoo := foo.Foo{}
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
+
+	t.Run("add with tag", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		testFoo := foo.FooDef{}
 		err = r.AddHandler(testFoo)
 		require.NoError(t, err)
 

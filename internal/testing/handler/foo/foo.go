@@ -14,11 +14,20 @@ func (f FooPkg) Get() http.HandlerFunc {
 	}
 }
 
-type Foo struct {
-	limi struct{} `path:"/foo"` //lint:ignore U1000 field parsed by limi
-}
+type Foo struct{}
 
 func (f Foo) Get() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("foo")) //nolint:errcheck
+	}
+}
+
+type FooDef struct {
+	limi struct{} `path:"/foo"`
+}
+
+func (f FooDef) Get() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("foo")) //nolint:errcheck

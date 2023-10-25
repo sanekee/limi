@@ -1,4 +1,4 @@
-package merchant
+package teams
 
 import (
 	"encoding/json"
@@ -11,20 +11,20 @@ import (
 )
 
 type DBClient interface {
-	ListMerchants() (db.Merchants, error)
-	GetMerchantByID(int) (db.Merchant, error)
-	CreateMerchant(db.CreateMerchantParams) (db.Merchant, error)
-	UpdateMerchantByID(int, db.UpdateMerchantParams) (db.Merchant, error)
-	DeleteMerchantByID(int) error
+	ListTeams() (db.Teams, error)
+	GetTeamByID(int) (db.Team, error)
+	CreateTeam(db.CreateTeamParams) (db.Team, error)
+	UpdateTeamByID(int, db.UpdateTeamParams) (db.Team, error)
+	DeleteTeamByID(int) error
+	GetMerchantsByTeamID(int) (db.Merchants, error)
 }
 
-type Merchants struct {
-	limi     struct{} `path:"/merchants"` //lint:ignore U1000 field parsed by limi
+type Teams struct {
 	DBClient DBClient
 }
 
-func (m Merchants) Get(w http.ResponseWriter, req *http.Request) {
-	l, err := m.DBClient.ListMerchants()
+func (t Teams) Get(w http.ResponseWriter, req *http.Request) {
+	l, err := t.DBClient.ListTeams()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -39,20 +39,20 @@ func (m Merchants) Get(w http.ResponseWriter, req *http.Request) {
 	w.Write(body)
 }
 
-func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
+func (t Teams) Post(w http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	var createParams db.CreateMerchantParams
+	var createParams db.CreateTeamParams
 	if err := json.Unmarshal(body, &createParams); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	merchant, err := m.DBClient.CreateMerchant(createParams)
+	merchant, err := t.DBClient.CreateTeam(createParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -69,12 +69,12 @@ func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
 
 }
 
-type Merchant struct {
-	limi     struct{} `path:"/merchants/{id}"` //lint:ignore U1000 field parsed by limi
+type Team struct {
+	limi     struct{} `path:"/teams/{id:[0-9]+}"` //lint:ignore U1000 field parsed by limi
 	DBClient DBClient
 }
 
-func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
+func (t Team) Get(w http.ResponseWriter, req *http.Request) {
 	idStr := limi.GetURLParam(req.Context(), "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -82,7 +82,7 @@ func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	merchant, err := m.DBClient.GetMerchantByID(id)
+	merchant, err := t.DBClient.GetTeamByID(id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -97,7 +97,7 @@ func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
 	w.Write(body)
 }
 
-func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
+func (t Team) Put(w http.ResponseWriter, req *http.Request) {
 	idStr := limi.GetURLParam(req.Context(), "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -111,13 +111,13 @@ func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var updateParams db.UpdateMerchantParams
+	var updateParams db.UpdateTeamParams
 	if err := json.Unmarshal(body, &updateParams); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	merchant, err := m.DBClient.UpdateMerchantByID(id, updateParams)
+	merchant, err := t.DBClient.UpdateTeamByID(id, updateParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -133,7 +133,7 @@ func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func (m Merchant) Delete(w http.ResponseWriter, req *http.Request) {
+func (t Team) Delete(w http.ResponseWriter, req *http.Request) {
 	idStr := limi.GetURLParam(req.Context(), "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -141,10 +141,38 @@ func (m Merchant) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := m.DBClient.DeleteMerchantByID(id); err != nil {
+	if err := t.DBClient.DeleteTeamByID(id); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+type TeamMerchants struct {
+	limi     struct{} `path:"/teams/{id:[0-9]+}/merchants"` //lint:ignore U1000 field parsed by limi
+	DBClient DBClient
+}
+
+func (t TeamMerchants) Get(w http.ResponseWriter, req *http.Request) {
+	idStr := limi.GetURLParam(req.Context(), "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	merchants, err := t.DBClient.GetMerchantsByTeamID(id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	body, err := json.Marshal(merchants)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
 }
