@@ -1,0 +1,78 @@
+on:
+  push:
+    branches: "**"
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches: "**"
+    paths-ignore:
+      - "docs/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+name: Tests
+jobs:
+  test:
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+
+    defaults:
+      run:
+        working-directory: ${{ env.GOPATH }}/src/${{ github.repository }}
+
+    strategy:
+      matrix:
+        go-version: [1.20.x, 1.21.x]
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.GOPATH }}/src/${{ github.repository }}
+      - name: Test
+        run: |
+          go test ./...
+
+  integration-test:
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: off
+
+    defaults:
+      run:
+        working-directory: ${{ env.GOPATH }}/src/${{ github.repository }}
+
+    strategy:
+      matrix:
+        go-version: [1.20.x, 1.21.x]
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.GOPATH }}/src/${{ github.repository }}
+      - name: Integration Test Prep
+        run: |
+          cd example/rest && \
+          go run rest
+      - name: Integration Test
+        run: |
+          cd example/rest/scripts && \
+          sh ./test.sh
