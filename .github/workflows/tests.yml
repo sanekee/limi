@@ -1,12 +1,8 @@
 on:
   push:
     branches: "**"
-    paths-ignore:
-      - "docs/**"
   pull_request:
     branches: "**"
-    paths-ignore:
-      - "docs/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,9 +35,9 @@ jobs:
       - name: Test
         working-directory: limi-repo
         run: |
-          pwd -P
-          ls -lrt
-          go test ./...
+          go test -coverprofile cover.out -covermode set ./...
+          coverage="$(go tool cover -func=cover.out | grep total: | sed 's/[^0-9.\]//g')"
+          echo "${coverage}"
       - name: Integration Test Prep
         working-directory: limi-repo/example/rest
         run: |
