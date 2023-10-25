@@ -148,8 +148,8 @@ func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 		return n.handle, trail
 	}
 
-	if len(matched) == len(str) {
-		return nil, ""
+	if len(matched) == 0 {
+		return nil, trail
 	}
 
 	for _, nn := range n.children {
