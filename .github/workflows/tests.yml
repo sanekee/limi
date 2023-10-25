@@ -40,14 +40,15 @@ jobs:
         with:
           path: ${{ github.workspace }}/src/github.com/${{ github.repository }}
       - name: Test
+        env:
+          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
         run: |
           go get -d -t ./...
           go test $(go list ./... | grep -v /example/)
       - name: Integration Test Prep
         env:
-          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
+          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}/example/rest
         run: |
-          cd example/rest && \
           go run main.go
       - name: Integration Test
         env:
