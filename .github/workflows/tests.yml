@@ -32,6 +32,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: limi-repo
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54
+          working-directory: limi-repo
       - name: Test
         working-directory: limi-repo
         run: |
