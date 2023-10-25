@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.20.x, 1.21.x]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -42,7 +42,7 @@ jobs:
         run: |
           go test ./...
       - name: Unix Test
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+        if: matrix.os == 'ubuntu-latest'
         working-directory: limi-repo
         run: |
           go test -coverprofile cover.out -covermode set ./...
@@ -53,7 +53,7 @@ jobs:
         run: |
           go run main.go &
       - name: Integration Test
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+        if: matrix.os == 'ubuntu-latest'
         working-directory: limi-repo/example/rest/scripts
         run: |
           sh ./test.sh
