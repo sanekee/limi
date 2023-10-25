@@ -45,7 +45,7 @@ jobs:
       - name: Integration Test Prep
         working-directory: limi-repo/example/rest
         run: |
-          go run main.go
+          go run main.go &
       - name: Integration Test
         working-directory: limi-repo/example/rest/scripts
         run: |
