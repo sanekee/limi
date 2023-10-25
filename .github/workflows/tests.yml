@@ -16,8 +16,7 @@ name: Tests
 jobs:
   test:
     env:
-      GOPATH: ${{ github.workspace }}
-      GO111MODULE: off
+      GO111MODULE: o
       GOPRIVATE: github.com/${{ github.repository }}
       TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
