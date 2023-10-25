@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	r, err := limi.NewRouter("/")
+	r, err := limi.NewRouter("/", limi.WithProfiler())
 	if err != nil {
 		panic(err)
 	}
