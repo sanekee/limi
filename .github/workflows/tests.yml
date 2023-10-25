@@ -16,7 +16,7 @@ name: Tests
 jobs:
   test:
     env:
-      GO111MODULE: o
+      GO111MODULE: on
       GOPRIVATE: github.com/${{ github.repository }}
       TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
