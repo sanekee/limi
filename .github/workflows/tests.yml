@@ -18,7 +18,6 @@ jobs:
     env:
       GO111MODULE: on
       GOPRIVATE: github.com/${{ github.repository }}
-      TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
     strategy:
       matrix:
@@ -29,6 +28,8 @@ jobs:
 
     steps:
       - name: Setup Git
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://sanekee:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Install Go
         uses: actions/setup-go@v4
@@ -43,10 +44,13 @@ jobs:
           go get -d -t ./...
           go test $(go list ./... | grep -v /example/)
       - name: Integration Test Prep
+        env:
+          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
         run: |
           cd example/rest && \
           go run main.go
       - name: Integration Test
+        env:
+          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}/example/rest/scripts
         run: |
-          cd example/rest/scripts && \
           sh ./test.sh
