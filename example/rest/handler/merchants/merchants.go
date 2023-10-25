@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"rest/db"
+
 	"github.com/sanekee/limi"
-	"github.com/sanekee/limi/example/rest/db"
 )
 
 type DBClient interface {

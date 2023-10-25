@@ -42,7 +42,7 @@ jobs:
         run: |
           go test -coverprofile cover.out -covermode set ./...
           coverage="$(go tool cover -func=cover.out | grep total: | sed 's/[^0-9.\]//g')"
-          echo "${coverage}"
+          echo "Coverage: ${coverage}%"
       - name: Integration Test Prep
         working-directory: limi-repo/example/rest
         run: |
