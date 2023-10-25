@@ -19,7 +19,6 @@ jobs:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: off
       GOPRIVATE: github.com/${{ github.repository }}
-      GOPROXY: direct
       TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
     strategy:
