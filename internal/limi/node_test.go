@@ -906,6 +906,10 @@ func (f funcHandler) IsPartial() bool {
 	return false
 }
 
+func (f funcHandler) Merge(Handle) bool {
+	return false
+}
+
 func lookupFunc(h any, str string) func() string {
 	if h == nil {
 		return nil

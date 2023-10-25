@@ -296,12 +296,17 @@ func (r *Router) IsPartial() bool {
 	return true
 }
 
+func (r *Router) Merge(limi.Handle) bool {
+	return true
+}
+
 // insertMethodHandler inserts new handler
 func (r *Router) insertMethodHandler(path string, h httpMethodHandlers) error {
 	if !r.isSubRoute {
 		path = r.buildPath(path)
 	}
 	handlers := buildHandlers(r.middlewares, h)
+
 	return r.node.Insert(path, handlers)
 }
 
@@ -415,6 +420,21 @@ func (h httpMethodHandlers) IsPartial() bool {
 	return false
 }
 
+func (h httpMethodHandlers) Merge(h1 limi.Handle) bool {
+	hMap, ok := h1.(httpMethodHandlers)
+	if !ok {
+		return false
+	}
+
+	for method, hdl := range hMap {
+		if _, ok := h[method]; ok {
+			return false
+		}
+		h[method] = hdl
+	}
+	return true
+}
+
 // isHTTPHandlerProducer check if the function produces a http.HandlerFunc
 func isHTTPHandlerProducer(v reflect.Value) bool {
 	if v.Kind() != reflect.Func {
@@ -479,5 +499,9 @@ func parseHost(str string) string {
 type hostHandler struct{}
 
 func (h hostHandler) IsPartial() bool {
+	return false
+}
+
+func (h hostHandler) Merge(limi.Handle) bool {
 	return false
 }

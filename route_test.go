@@ -897,3 +897,90 @@ func TestAddRouter(t *testing.T) {
 		require.NotEmpty(t, body)
 	})
 }
+
+func TestAddHandlerFunc(t *testing.T) {
+	t.Run("add single func", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("foo")) // nolint:errcheck
+		})
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
+
+	t.Run("merge same path", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(req.Method + ":foo")) // nolint:errcheck
+		})
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodPost, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(req.Method + ":foo")) // nolint:errcheck
+		})
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "GET:foo", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodPost, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "POST:foo", string(body))
+	})
+
+	t.Run("merge same path with conflict", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("foo")) // nolint:errcheck
+		})
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("foo")) // nolint:errcheck
+		})
+		require.Error(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
+}

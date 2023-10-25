@@ -10,6 +10,7 @@ import (
 
 type Handle interface {
 	IsPartial() bool
+	Merge(Handle) bool
 }
 
 type Node struct {
@@ -55,7 +56,11 @@ func (n *Node) Insert(str string, h Handle) error {
 	}
 
 	if node.handle != nil {
-		return errors.New(ErrHandleExists)
+		if node.handle.Merge(h) {
+			return nil
+		} else {
+			return errors.New(ErrHandleExists)
+		}
 	}
 	node.handle = h
 
@@ -189,4 +194,8 @@ type HTTPHandler http.HandlerFunc
 
 func (h HTTPHandler) IsPartial() bool {
 	return true
+}
+
+func (h HTTPHandler) Merge(Handle) bool {
+	return false
 }
