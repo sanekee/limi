@@ -37,19 +37,16 @@ jobs:
         with:
           path: limi-repo
       - name: Test
-        env:
-          working-directory: limi-repo
+        working-directory: limi-repo
         run: |
           pwd -P
           ls -lrt
           go test ./...
       - name: Integration Test Prep
-        env:
-          working-directory: limi-repo/example/rest
+        working-directory: limi-repo/example/rest
         run: |
           go run main.go
       - name: Integration Test
-        env:
-          working-directory: limi-repo/example/rest/scripts
+        working-directory: limi-repo/example/rest/scripts
         run: |
           sh ./test.sh
