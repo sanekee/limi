@@ -16,8 +16,6 @@ name: Tests
 jobs:
   test:
     env:
-      GO111MODULE: on
-      GOPRIVATE: github.com/${{ github.repository }}
 
     strategy:
       matrix:
@@ -29,6 +27,7 @@ jobs:
     steps:
       - name: Setup Git
         env:
+          GOPRIVATE: github.com/sanekee/limi/*
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://sanekee:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Install Go
@@ -38,20 +37,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          path: ${{ github.workspace }}/src/github.com/${{ github.repository }}
+          path: ${{ github.workspace }}/src
       - name: Test
         env:
-          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}
+          working-directory: ${{ github.workspace }}/src
         run: |
-          go get -d -t ./...
-          go test $(go list ./... | grep -v /example/)
+          go test ./...
       - name: Integration Test Prep
         env:
-          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}/example/rest
+          working-directory: ${{ github.workspace }}/src/example/rest
         run: |
           go run main.go
       - name: Integration Test
         env:
-          working-directory: ${{ github.workspace }}/src/github.com/${{ github.repository }}/example/rest/scripts
+          working-directory: ${{ github.workspace }}/src/example/rest/scripts
         run: |
           sh ./test.sh
