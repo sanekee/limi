@@ -297,7 +297,7 @@ func (r *Router) IsPartial() bool {
 }
 
 func (r *Router) Merge(limi.Handle) bool {
-	return true
+	return false
 }
 
 // insertMethodHandler inserts new handler
