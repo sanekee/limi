@@ -18,6 +18,8 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       GO111MODULE: off
+      GOPRIVATE: ${{ github.repository }}
+      TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
     defaults:
       run:
@@ -26,7 +28,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.20.x, 1.21.x]
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -35,6 +37,8 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
+      - name: Setup Go
+        run: git config --global url."https://sanekee:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Checkout code
         uses: actions/checkout@v4
         with:
