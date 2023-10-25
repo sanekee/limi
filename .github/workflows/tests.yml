@@ -36,7 +36,13 @@ jobs:
         with:
           version: v1.55
           working-directory: limi-repo
-      - name: Test
+      - name: Windows Test
+        if: matrix.os == 'windows-latest'
+        working-directory: limi-repo
+        run: |
+          go test ./...
+      - name: Unix Test
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         working-directory: limi-repo
         run: |
           go test -coverprofile cover.out -covermode set ./...
@@ -47,6 +53,7 @@ jobs:
         run: |
           go run main.go &
       - name: Integration Test
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         working-directory: limi-repo/example/rest/scripts
         run: |
           sh ./test.sh
