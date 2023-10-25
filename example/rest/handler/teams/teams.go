@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"rest/db"
 	"strconv"
 
 	"github.com/sanekee/limi"
+	"github.com/sanekee/limi/example/rest/db"
 )
 
 type DBClient interface {

@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"rest/db"
-	"rest/handler/merchants"
-	"rest/handler/teams"
 
 	"github.com/sanekee/limi"
+	"github.com/sanekee/limi/example/rest/db"
+	"github.com/sanekee/limi/example/rest/handler/merchants"
+	"github.com/sanekee/limi/example/rest/handler/teams"
 )
 
 func main() {
