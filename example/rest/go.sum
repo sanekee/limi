@@ -12,6 +12,8 @@ github.com/sanekee/limi v0.0.0-20231025025045-23e0f64e4176 h1:lj2XCgAhYeR9JR1L/X
 github.com/sanekee/limi v0.0.0-20231025025045-23e0f64e4176/go.mod h1:KAsA3rH/JGNkkdSr0bGMRciyA5mq+IYsGeoe6l7KeQ8=
 github.com/sanekee/limi v0.0.0-20231025081635-e47b353b0864 h1:+XO0ov/xogXo26/ySO0QG4SYnZdXJqc7h1NZ7EEjHwc=
 github.com/sanekee/limi v0.0.0-20231025081635-e47b353b0864/go.mod h1:KAsA3rH/JGNkkdSr0bGMRciyA5mq+IYsGeoe6l7KeQ8=
+github.com/sanekee/limi v0.0.0-20231025090920-5ea73b568c19 h1:RKNqE78VBGO/qoJrdeb5BNHE59eWl1ScjtCffq12V88=
+github.com/sanekee/limi v0.0.0-20231025090920-5ea73b568c19/go.mod h1:KAsA3rH/JGNkkdSr0bGMRciyA5mq+IYsGeoe6l7KeQ8=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
