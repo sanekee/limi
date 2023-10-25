@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 )
 
@@ -183,3 +184,9 @@ func (n nodes) Less(i, j int) bool {
 
 func (n nodes) Swap(i, j int) { n[i], n[j] = n[j], n[i] }
 func (n nodes) Len() int      { return len(n) }
+
+type HTTPHandler http.HandlerFunc
+
+func (h HTTPHandler) IsPartial() bool {
+	return true
+}

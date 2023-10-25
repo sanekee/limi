@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"reflect"
 	"strings"
 
@@ -13,14 +14,12 @@ import (
 
 type Handler any
 
-type httpHandler struct {
+type httpMethodHandler struct {
 	// Map of HTTP Handlers by Methods
 	handlers map[string]http.Handler
 
 	// List of middlewares
 	middlewares []func(http.Handler) http.Handler
-
-	path string
 }
 
 // Router is a http router
@@ -131,6 +130,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case *Router:
 		limi.SetRoutingPath(ctx, trail)
 		handler = hh
+	case limi.HTTPHandler:
+		handler = http.HandlerFunc(hh)
 	}
 
 	handler.ServeHTTP(w, req)
@@ -193,10 +194,9 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	}
 
 	if len(methods) > 0 {
-		return r.insertHandler(httpHandler{
+		return r.insertMethodHandler(hPath, httpMethodHandler{
 			handlers:    methods,
 			middlewares: mws,
-			path:        hPath,
 		})
 	}
 	return nil
@@ -214,13 +214,19 @@ func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.
 
 // AddHandlerFunc adds http handler with path and method
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
-	return r.insertHandler(httpHandler{
+	return r.insertMethodHandler(path, httpMethodHandler{
 		handlers: map[string]http.Handler{
 			method: fn,
 		},
 		middlewares: mws,
-		path:        path,
 	})
+}
+
+// AddHTTPHandler adds a catch all http handler with path
+func (r *Router) AddHTTPHandler(path string, h http.Handler, mws ...func(http.Handler) http.Handler) error {
+	path = r.buildPath(path)
+	h = chainMiddlewares(h, r.middlewares...)
+	return r.node.Insert(path, limi.HTTPHandler(h.ServeHTTP))
 }
 
 // AddRouter adds a sub router
@@ -260,16 +266,24 @@ func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	return h != nil
 }
 
+func WithProfiler() RouterOptions {
+	return func(r *Router) error {
+		if err := r.AddHTTPHandler("/debug/pprof", pprofHandler{}); err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
 // IsPartial implemens Node interface, returning true indicate partial match is return for futher matching
 func (r *Router) IsPartial() bool {
 	return true
 }
 
-// insertHandler inserts new handler
-func (r *Router) insertHandler(h httpHandler) error {
-	path := h.path
+// insertMethodHandler inserts new handler
+func (r *Router) insertMethodHandler(path string, h httpMethodHandler) error {
 	if !r.isSubRoute {
-		path = r.buildPath(h.path)
+		path = r.buildPath(path)
 	}
 	mws := append(r.middlewares, h.middlewares...)
 	handlers := buildHandlers(mws, h.handlers)
@@ -289,18 +303,21 @@ func buildHandlers(mws []func(http.Handler) http.Handler, hvs handlerMap) handle
 	handlers := make(handlerMap)
 
 	for method, h := range hvs {
-		if len(mws) == 0 {
-			handlers[method] = h
-			continue
-		}
-
-		h = mws[len(mws)-1](h)
-		for i := len(mws) - 2; i >= 0; i-- {
-			h = mws[i](h)
-		}
-		handlers[method] = h
+		handlers[method] = chainMiddlewares(h, mws...)
 	}
 	return handlers
+}
+
+func chainMiddlewares(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler {
+	if len(mws) == 0 {
+		return h
+	}
+
+	h = mws[len(mws)-1](h)
+	for i := len(mws) - 2; i >= 0; i-- {
+		h = mws[i](h)
+	}
+	return h
 }
 
 func buildPath(parent string, path string) string {
@@ -441,4 +458,10 @@ type hostHandler struct{}
 
 func (h hostHandler) IsPartial() bool {
 	return false
+}
+
+type pprofHandler struct{}
+
+func (p pprofHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	pprof.Index(w, req)
 }

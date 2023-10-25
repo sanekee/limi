@@ -816,4 +816,27 @@ func TestAddRouter(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(body))
 	})
+
+	t.Run("add profiler", func(t *testing.T) {
+		r, err := NewRouter("/admin", WithProfiler())
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body)
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/admin/debug/pprof/profile", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.NotEmpty(t, body)
+	})
 }
