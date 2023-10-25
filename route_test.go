@@ -170,11 +170,10 @@ func TestFindHandlerPath(t *testing.T) {
 
 	for _, r := range tests {
 		t.Run("", func(t *testing.T) {
-			actual := findHandlerPath(r.pkgPath)
+			actual := findHandlerPath("handler", r.pkgPath)
 			require.Equal(t, r.expected, actual)
 		})
 	}
-
 }
 
 func TestIsHTTPHandlerProducer(t *testing.T) {

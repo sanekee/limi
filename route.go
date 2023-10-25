@@ -12,6 +12,10 @@ import (
 	"github.com/sanekee/limi/internal/limi"
 )
 
+const (
+	defaultHandlerPath = "handler"
+)
+
 type Handler any
 
 // Map of HTTP Handlers by Methods
@@ -20,6 +24,7 @@ type httpMethodHandlers map[string]http.Handler
 // Router is a http router
 type Router struct {
 	path        string
+	handlerPath string
 	host        *limi.Node
 	node        *limi.Node
 	middlewares []func(http.Handler) http.Handler
@@ -34,6 +39,7 @@ type Router struct {
 func NewRouter(path string, opts ...RouterOptions) (*Router, error) {
 	r := &Router{
 		path:                    path,
+		handlerPath:             defaultHandlerPath,
 		node:                    &limi.Node{},
 		notFoundHandler:         http.NotFoundHandler(),
 		methodNotAllowedHandler: methodNotAllowedHandler,
@@ -97,6 +103,14 @@ func WithProfiler() RouterOptions {
 		})); err != nil {
 			return err
 		}
+		return nil
+	}
+}
+
+// WithHandlerPath set Router's handler package base path to find handler's routing path
+func WithHandlerPath(path string) RouterOptions {
+	return func(r *Router) error {
+		r.handlerPath = path
 		return nil
 	}
 }
@@ -177,7 +191,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	if !strings.HasPrefix(hPath, "/") {
 		rtName := strings.ToLower(baseRT.Name())
 		pkgPath := baseRT.PkgPath()
-		pkgPath = removeTraillingSlash(findHandlerPath(pkgPath))
+		pkgPath = removeTraillingSlash(findHandlerPath(r.handlerPath, pkgPath))
 
 		if !pathDef {
 			pkgName := packageName(pkgPath)
@@ -362,8 +376,8 @@ func removeLeadingSlash(path string) string {
 	return path
 }
 
-func findHandlerPath(path string) string {
-	arrPath := strings.SplitAfter(path, "/handler")
+func findHandlerPath(handlerPath, path string) string {
+	arrPath := strings.SplitAfter(path, handlerPath)
 	if len(arrPath) == 1 {
 		return path
 	}
