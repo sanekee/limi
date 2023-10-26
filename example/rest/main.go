@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"rest/db"
@@ -9,10 +10,15 @@ import (
 	"rest/handler/teams"
 
 	"github.com/sanekee/limi"
+	"github.com/sanekee/limi/middleware"
 )
 
 func main() {
-	r, err := limi.NewRouter("/", limi.WithProfiler())
+	r, err := limi.NewRouter(
+		"/",
+		limi.WithMiddlewares(middleware.Log(log.Default())),
+		limi.WithProfiler(),
+	)
 	if err != nil {
 		panic(err)
 	}

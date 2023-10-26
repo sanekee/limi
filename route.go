@@ -127,8 +127,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ctx = limi.NewContext(ctx)
 		req = req.WithContext(ctx)
 
-		host := parseHost(req.URL.Host)
-		if !r.IsSupportedHost(ctx, host) {
+		if !r.IsSupportedHost(ctx, parseHost(req.Host)) {
 			r.notFoundHandler.ServeHTTP(w, req)
 		}
 		path = req.URL.Path
