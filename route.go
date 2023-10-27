@@ -58,7 +58,7 @@ type RouterOptions func(r *Router) error
 func WithHost(host string) RouterOptions {
 	return func(r *Router) error {
 		if r.isSubRoute {
-			return errors.New(limi.ErrUnsupportedOperation)
+			return fmt.Errorf("unsupported subroute with host %w", limi.ErrUnsupportedOperation)
 		}
 		if r.host == nil {
 			n := &limi.Node{}
@@ -123,7 +123,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var path string
-	if !r.isSubRoute {
+	if !limi.IsContextSet(ctx) {
 		ctx = limi.NewContext(ctx)
 		req = req.WithContext(ctx)
 
@@ -135,11 +135,20 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		path = limi.GetRoutingPath(ctx)
 	}
 
-	h, trail := r.node.Lookup(ctx, path)
+	h, trail, err := r.lookup(ctx, req.Method, path)
+	if err != nil {
+		if errors.Is(err, limi.ErrMethodNotAllowed) {
+			limi.SetRouter(ctx, r)
+			h.ServeHTTP(w, req)
+			return
+		}
+	}
 	if h == nil {
 		r.notFoundHandler.ServeHTTP(w, req)
 		return
 	}
+
+	limi.SetRouter(ctx, r)
 
 	var handler http.Handler
 	switch hh := h.(type) {
@@ -314,6 +323,39 @@ func (r *Router) insertRouter(r1 *Router) error {
 	return r.node.Insert(r.buildPath(r1.path), r1)
 }
 
+func (r *Router) lookup(ctx context.Context, method string, path string) (limi.Handle, string, error) {
+	router := r
+	findPath := path
+	for {
+		h, trail := router.node.Lookup(ctx, findPath)
+
+		// exact match
+		if trail == "" {
+			hh, ok := h.(httpMethodHandlers)
+			if !ok {
+				return h, "", limi.ErrNotFound
+			}
+			_, ok = hh[method]
+			if !ok {
+				return h, "", limi.ErrMethodNotAllowed
+			}
+			return h, "", nil
+		}
+
+		if !h.IsPartial() {
+			return nil, "", limi.ErrNotFound
+		}
+
+		hr, ok := h.(*Router)
+		if !ok {
+			// catchall handler
+			return h, trail, nil
+		}
+
+		router, findPath = hr, trail
+	}
+}
+
 func (r *Router) buildPath(path string) string {
 	return buildPath(r.path, path)
 }
@@ -419,6 +461,20 @@ func (h httpMethodHandlers) IsPartial() bool {
 	return false
 }
 
+func (h httpMethodHandlers) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	hdl, ok := h[req.Method]
+	if !ok {
+		router, ok := limi.GetRouter(req.Context()).(*Router)
+		if ok && router != nil {
+			router.methodNotAllowedHandler(h.keys()...).ServeHTTP(w, req)
+			return
+		}
+		methodNotAllowedHandler(h.keys()...).ServeHTTP(w, req)
+		return
+	}
+	hdl.ServeHTTP(w, req)
+}
+
 func (h httpMethodHandlers) Merge(h1 limi.Handle) bool {
 	hMap, ok := h1.(httpMethodHandlers)
 	if !ok {
@@ -504,3 +560,5 @@ func (h hostHandler) IsPartial() bool {
 func (h hostHandler) Merge(limi.Handle) bool {
 	return false
 }
+
+func (h hostHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}

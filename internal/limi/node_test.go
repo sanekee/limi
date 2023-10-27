@@ -2,6 +2,7 @@ package limi
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -909,6 +910,8 @@ func (f funcHandler) IsPartial() bool {
 func (f funcHandler) Merge(Handle) bool {
 	return false
 }
+
+func (f funcHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}
 
 func lookupFunc(h any, str string) func() string {
 	if h == nil {

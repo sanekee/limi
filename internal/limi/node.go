@@ -11,6 +11,7 @@ import (
 type Handle interface {
 	IsPartial() bool
 	Merge(Handle) bool
+	ServeHTTP(http.ResponseWriter, *http.Request)
 }
 
 type Node struct {
@@ -21,7 +22,7 @@ type Node struct {
 
 func (n *Node) Insert(str string, h Handle) error {
 	if str == "" {
-		return errors.New(ErrInvalidInput)
+		return fmt.Errorf("node string cannot be empty %w", ErrInvalidInput)
 	}
 
 	parsers, err := SplitParsers(str)
@@ -59,7 +60,7 @@ func (n *Node) Insert(str string, h Handle) error {
 		if node.handle.Merge(h) {
 			return nil
 		} else {
-			return errors.New(ErrHandleExists)
+			return fmt.Errorf("handle already existed %w", ErrHandleExists)
 		}
 	}
 	node.handle = h
@@ -198,4 +199,8 @@ func (h HTTPHandler) IsPartial() bool {
 
 func (h HTTPHandler) Merge(Handle) bool {
 	return false
+}
+
+func (h HTTPHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	h(w, req)
 }

@@ -2,7 +2,6 @@ package limi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -41,14 +40,14 @@ func SplitParsers(str string) ([]Parser, error) {
 		if parse != "" && parse[0] == '{' {
 			idx := strings.IndexByte(parse, '}')
 			if idx < 0 {
-				return nil, fmt.Errorf("missing closing } in label %w", errors.New(ErrInvalidInput))
+				return nil, fmt.Errorf("missing closing } in label %w", ErrInvalidInput)
 			}
 			parse, next = parse[1:idx], parse[idx+1:]
 			if idx := strings.Index(parse, ":"); idx > 0 {
 				expr := parse[idx:]
 				_, err := regexp.Compile(expr)
 				if err != nil {
-					return nil, fmt.Errorf("invalid regular expression %s %w", expr, errors.New(ErrInvalidInput))
+					return nil, fmt.Errorf("invalid regular expression %s %w", expr, ErrInvalidInput)
 				}
 				parsers = append(parsers, Parser{Str: parse, Type: TypeRegexp})
 			} else {
