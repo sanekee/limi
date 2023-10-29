@@ -142,9 +142,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if !r.IsSupportedHost(ctx, parseHost(req.Host)) {
 			r.notFoundHandler.ServeHTTP(w, req)
 		}
-		path = req.URL.Path
 	} else {
 		path = limi.GetRoutingPath(ctx)
+	}
+
+	if path == "" {
+		path = req.URL.Path
 	}
 
 	h, trail := r.lookup(ctx, path)
@@ -173,33 +176,8 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	}
 	rv := reflect.ValueOf(handler)
 
-	var hPath = ""
-	var pathDef bool
-	if baseRT.Kind() == reflect.Struct {
-		field, ok := baseRT.FieldByName("limi")
-		if ok {
-			if p, ok := field.Tag.Lookup("path"); ok {
-				hPath = p
-				pathDef = true
-			}
-		}
-	}
-
-	// if handler's path is not absolute path, prefix with package path after a hander/ subpath
-	if !strings.HasPrefix(hPath, "/") {
-		rtName := strings.ToLower(baseRT.Name())
-		pkgPath := baseRT.PkgPath()
-		pkgPath = removeTraillingSlash(findHandlerPath(r.handlerPath, pkgPath))
-
-		if !pathDef {
-			pkgName := packageName(pkgPath)
-			hPath = pkgPath
-			if pkgName != rtName {
-				hPath += ensureLeadingSlash(rtName)
-			}
-		} else {
-			hPath = pkgPath + ensureLeadingSlash(hPath)
-		}
+	if baseRT.Kind() != reflect.Struct {
+		return fmt.Errorf("unsupported handler type %s %w", baseRT.Kind(), limi.ErrUnsupportedOperation)
 	}
 
 	methods := httpMethodHandlers{
@@ -225,9 +203,23 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 		}
 	}
 
-	if len(methods.m) > 0 {
-		return r.insertMethodHandler(hPath, methods)
+	if len(methods.m) == 0 {
+		return nil
 	}
+
+	var tag reflect.StructTag
+	field, ok := baseRT.FieldByName("limi")
+	if ok {
+		tag = field.Tag
+	}
+
+	paths := buildHandlerPaths(findHandlerPath(r.handlerPath, baseRT.PkgPath()), baseRT.Name(), tag)
+	for _, path := range paths {
+		if err := r.insertMethodHandler(path, methods); err != nil {
+			return fmt.Errorf("failed to insert methods handler with path %s %w", path, err)
+		}
+	}
+
 	return nil
 }
 
@@ -468,6 +460,75 @@ func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
+}
+
+// lookupTags workaround stdlib lookup method which only returns the first result
+func lookupTags(tag reflect.StructTag, key string) []string {
+	var arr []string
+	var values []string
+
+	var bs []byte
+	var opened bool
+	var escaped int
+	for i := 0; i < len(tag); i++ {
+		if tag[i] == '\\' && i-escaped > 1 {
+			escaped = i
+		}
+		if tag[i] == '"' && i-escaped > 1 {
+			opened = !opened
+		}
+		if tag[i] == ' ' {
+			if len(bs) > 0 && !opened {
+				arr = append(arr, string(bs))
+				bs = []byte{}
+				continue
+			}
+		}
+		if tag[i] == ' ' && !opened {
+			continue
+		}
+		bs = append(bs, tag[i])
+	}
+
+	if len(bs) > 0 {
+		arr = append(arr, string(bs))
+	}
+
+	for i := 0; i < len(arr); i++ {
+		t := reflect.StructTag(arr[i])
+		if v, ok := t.Lookup(key); ok {
+			values = append(values, v)
+		}
+	}
+	return values
+}
+
+func buildHandlerPaths(pkgPath, structName string, structTag reflect.StructTag) []string {
+	pkgPath = removeTraillingSlash(pkgPath)
+
+	paths := lookupTags(structTag, "path")
+	structName = strings.ToLower(structName)
+
+	// no path tag found, default to pkgPath + structname
+	if len(paths) == 0 {
+		pkgName := packageName(pkgPath)
+		path := pkgPath
+		if pkgName != structName {
+			path += ensureLeadingSlash(structName)
+		}
+		paths = append(paths, path)
+	}
+
+	// fix relative path
+	for i, path := range paths {
+		if !strings.HasPrefix(path, "/") {
+			path = strings.TrimPrefix(path, ".")
+			path = pkgPath + ensureLeadingSlash(path)
+		}
+		paths[i] = path
+	}
+
+	return paths
 }
 
 // Map of HTTP Handlers by Methods

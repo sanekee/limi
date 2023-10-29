@@ -1,6 +1,6 @@
 # Limi
 
-Limit is a lightweight go http router. The goal of the project is to make writing REST application easier with composable middlewares and idiomatic handler interface.
+Limi is a lightweight go http router. The goal of the project is to make writing REST application easier with composable middlewares and idiomatic handler interface.
 
 ## Features
 
@@ -13,14 +13,22 @@ Limit is a lightweight go http router. The goal of the project is to make writin
 
 | Name | Description |
 | --- | --- |
-| Router | Router is the core of Limit, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. Limi Router is fully compatible with `net/http`. |
+| Router | Router is the core of Limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. Limi Router is fully compatible with `net/http`. |
 | Handler | Handler is the function that handle the http request, Limi Handler is fully compaitble with `net/http` `http.Handler`. |
 | Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. Limi middlewares are compaible with middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
 | Mux | Mux is a router multiplexer, mux is used to serve single HTTP listener with multiple routers. Requests are handled by the order the routers were added. |
 
 ## Usage
 
+Import limi in your project.
+
+```shell
+go get github.com/sanekee/limi
+```
+
 ### Router
+
+Adding a router.
 
 #### Router Options
 
@@ -89,7 +97,7 @@ if err != nil {
 
 | Method | Type | Description |
 | --- | --- | --- |
-| AddHandler | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a path tag to a `limi struct{} `path:"/custom-path"` field in the Handler struct. |
+| AddHandler | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `limi struct{} `path:"/custom-path"` field in the Handler struct.<br>- Multiple paths can be added to handle multiple paths, e.g. `limi struct{} `path:"/story/cool-path" path:"/story/strange-path" path:"/best-path"` |
 | AddHandlerFunc | http.HandlerFunc | `http.HandlerFunc` is `net/http` handler function. |
 | AddHTTPHandler | http.Handler | `http.Handler` is `net/http` handler with `ServeHTTP` method, using this as a catch all handler. |
 
@@ -236,7 +244,7 @@ An example logging middleware can be found in the [middleware/log.go](middleware
 
 ### Mux
 
-Mux is the router multiplexer. Use when we need multiple routers in a single listener.
+Mux is the router multiplexer. Using mux when we need multiple routers in a single listener.
 
 #### Example
 
@@ -285,19 +293,26 @@ if err := http.ListenAndServe(":3333", m); err != nil {
 Pattern matcher is an internal component in Limi router. It's used in conjuction of the Radix Tree to lookup a `host` or `path` to find the right handler.
 
 | Matcher Type | Syntax | Priority | Descrption |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | String | mypath | 1 | A string matcher matches the exact string (case sensitive). |
 | Regexp | {myid:[0-9]+} | 2 | A regular expression matcher uses the regular expression syntax defined after the colon (e.g. `[0-9]+`) to match string. Matched value will be set in the value context. |
-| Label | {slug} | 3 | A label matcher matches everything and value is in the value context. |
+| Label | {slug} | 3 | A label wildcard matcher matches everything. Matched value is set in the value context. |
 
-When multiple handler with similar matcher is found, they are matched accoriding to the priority.
+When a string matches multiple matchers, they are matched accoriding to the priority.
 
 #### Example
 
 ```golang
-r.AddHandlerFunc("/mypath" ..// matches the exact path /mypath
+r, _ := NewRouter("/", 
+    WithHosts(
+        "static.domain.com",                 // matches host static.domain.com 
+        "{apiVer:v[0-9]+}.api.domain.com",   // matches host v1.api.domain.com, v2.api.domain.com ... and sets URLParams["apiVer"] = value
+        "{subdomain}.domain.com",            // matches host subdomain1.domain.com, subdomain2.domain.com ... and sets URLParams["subdomain"] = value
+))
 
-r.AddHandlerFunc("/mypath/{id:[0-9]+}" ..// matches the path /mypath/1, /mypath/2 ... sets URLParam[id] = <value>
+r.AddHandlerFunc("/blog/top" ..              // matches the exact path /blog/top
 
-r.AddHandlerFunc("/mypath/{slug}" ..// matches the path /mypath/cool-article-1, /mypath/cool-article-2 ... sets URLParam[slug] = <value>
+r.AddHandlerFunc("/blog/{id:[0-9]+}" ..      // matches the path /blog/1, /blog/2 ..., sets URLParams["id"] = <value>
+
+r.AddHandlerFunc("/blog/{slug}" ..           // matches the path /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
 ```

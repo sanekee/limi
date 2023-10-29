@@ -3,24 +3,20 @@ package foo
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/sanekee/limi/internal/testing/handler"
 )
 
 type FooPkg struct{}
 
 func (f FooPkg) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
 }
 
 type Foo struct{}
 
 func (f Foo) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
 }
 
 type FooDef struct {
@@ -28,10 +24,7 @@ type FooDef struct {
 }
 
 func (f FooDef) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
 }
 
 type FooPtr struct {
@@ -52,10 +45,7 @@ type FooRel struct {
 }
 
 func (f FooRel) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
 }
 
 type FooHdl struct{}
@@ -81,33 +71,37 @@ func (f *FooPtrHdl) Get() http.HandlerFunc {
 type Foo1 struct{}
 
 func (f Foo1) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo1")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo1"))
 }
 
 type Foo2 struct{}
 
 func (f Foo2) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("foo2")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo2"))
 }
 
 type FooMulti struct{}
 
 func (f FooMulti) Get() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("get foomulti")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("get foomulti"))
 }
 
 func (f FooMulti) Post() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("post foomulti")) //nolint:errcheck
-	}
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("post foomulti"))
+}
+
+type FooSlash struct {
+	limi struct{} `path:"./"` //lint:ignore U1000 field parsed by limi
+}
+
+func (f FooSlash) Get() http.HandlerFunc {
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
+}
+
+type FooPaths struct {
+	limi struct{} `path:"foo1" path:"foo2"` //nolint:staticcheck,unuseud
+}
+
+func (f FooPaths) Get() http.HandlerFunc {
+	return handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo"))
 }

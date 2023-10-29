@@ -8,49 +8,49 @@ import (
 
 func NoError(tb testing.TB, err error) {
 	if err != nil {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func Error(tb testing.TB, err error) {
 	if err == nil {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func Equal(tb testing.TB, expected any, actual any) {
 	if !reflect.DeepEqual(expected, actual) {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func Len(tb testing.TB, v any, length int) {
 	if getLength(tb, v) != length {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func True(tb testing.TB, v bool) {
 	if !v {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func False(tb testing.TB, v bool) {
 	if v {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func NotEmpty(tb testing.TB, v any) {
 	if getLength(tb, v) <= 0 {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func Empty(tb testing.TB, v any) {
 	if getLength(tb, v) > 0 {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
@@ -71,14 +71,14 @@ func getLength(tb testing.TB, v any) int {
 func Nil(tb testing.TB, v any) {
 	rv := reflect.ValueOf(v)
 	if !rv.IsNil() {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
 func NotNil(tb testing.TB, v any) {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
-		tb.Fail()
+		tb.FailNow()
 	}
 }
 
@@ -101,7 +101,7 @@ func Panics(tb testing.TB, f func()) {
 	wg.Wait()
 
 	if !isPanic {
-		tb.Fail()
+		tb.FailNow()
 	}
 
 }

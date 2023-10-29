@@ -520,6 +520,54 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(body))
 	})
+
+	t.Run("add end slash", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		testFoo := foo.FooSlash{}
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
+
+	t.Run("add multiple path", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		testFoo := foo.FooPaths{}
+		err = r.AddHandler(testFoo)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo1", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo2", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
 }
 
 func TestAddRouter(t *testing.T) {
@@ -1315,4 +1363,99 @@ func TestMiddleware(t *testing.T) {
 
 		require.Equal(t, []int{1, 2, 3}, layers)
 	})
+}
+
+func TestLookupTags(t *testing.T) {
+	type testSt struct {
+		testName string
+		input    reflect.StructTag
+		expected []string
+	}
+
+	tests := []testSt{
+		{
+			testName: "single",
+			input:    `path:"foo"`,
+			expected: []string{"foo"},
+		},
+		{
+			testName: "multiple",
+			input:    `path:"foo1" path:"foo2"`,
+			expected: []string{"foo1", "foo2"},
+		},
+		{
+			testName: "multiple with spaces",
+			input:    ` path:"foo1"   path:" foo2"    path:"foo3 "`,
+			expected: []string{"foo1", " foo2", "foo3 "},
+		},
+		{
+			testName: "multiple with spaces and quotes",
+			input:    ` path:"fo\"o1" path:"fo\"\"o2", path:\"foo\"`,
+			expected: []string{`fo"o1`, `fo""o2`},
+		},
+	}
+
+	t.Parallel()
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			actual := lookupTags(test.input, "path")
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func TestBuildHandlerPath(t *testing.T) {
+	type testSt struct {
+		testName   string
+		pkgPath    string
+		structName string
+		tag        reflect.StructTag
+		expected   []string
+	}
+
+	tests := []testSt{
+		{
+			testName:   "package path + same struct name",
+			pkgPath:    "/foo",
+			structName: "Foo",
+			expected:   []string{"/foo"},
+		},
+		{
+			testName:   "package path + different struct name",
+			pkgPath:    "/foo",
+			structName: "FooBar",
+			expected:   []string{"/foo/foobar"},
+		},
+		{
+			testName:   "package path + struct name + tag absolute path",
+			pkgPath:    "/foo",
+			structName: "FooBar",
+			tag:        `path:"/tagpath"`,
+			expected:   []string{"/tagpath"},
+		},
+		{
+			testName:   "package path + struct name + tag relative path",
+			pkgPath:    "/foo",
+			structName: "FooBar",
+			tag:        `path:"tagpath"`,
+			expected:   []string{"/foo/tagpath"},
+		},
+		{
+			testName:   "package path + struct name + multiple tag paths",
+			pkgPath:    "/foo",
+			structName: "FooBar",
+			tag:        `path:"tagpath" path:"/absolutetag", path:"./"`,
+			expected:   []string{"/foo/tagpath", "/absolutetag", "/foo/"},
+		},
+	}
+
+	t.Parallel()
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			actual := buildHandlerPaths(test.pkgPath, test.structName, test.tag)
+			require.Equal(t, test.expected, actual)
+		})
+	}
 }
