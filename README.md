@@ -13,9 +13,9 @@ Limi is a lightweight go http router. The goal of the project is to make writing
 
 | Name | Description |
 | --- | --- |
-| Router | Router is the core of Limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. Limi Router is fully compatible with `net/http`. |
-| Handler | Handler is the function that handle the http request, Limi Handler is fully compaitble with `net/http` `http.Handler`. |
-| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. Limi middlewares are compaible with middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
+| Router | Router is the core of limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. limi Router is fully compatible with `net/http`. |
+| Handler | Handler is the function that handle the http request, limi Handler is fully compaitble with `net/http` `http.Handler`. |
+| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. limi middlewares are compaible with middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
 | Mux | Mux is a router multiplexer, mux is used to serve single HTTP listener with multiple routers. Requests are handled by the order the routers were added. |
 
 ## Usage
@@ -290,7 +290,7 @@ if err := http.ListenAndServe(":3333", m); err != nil {
 
 ### Pattern Matching
 
-Pattern matcher is an internal component in Limi router. It's used in conjuction of the Radix Tree to lookup a `host` or `path` to find the right handler.
+Pattern matcher is an internal component in limi router. It's used in conjuction of the Radix Tree to lookup a `host` or `path` to find the right handler.
 
 | Matcher Type | Syntax | Priority | Descrption |
 | --- | --- | --- | --- |
@@ -298,7 +298,7 @@ Pattern matcher is an internal component in Limi router. It's used in conjuction
 | Regexp | {myid:[0-9]+} | 2 | A regular expression matcher uses the regular expression syntax defined after the colon (e.g. `[0-9]+`) to match string. Matched value will be set in the value context. |
 | Label | {slug} | 3 | A label wildcard matcher matches everything. Matched value is set in the value context. |
 
-When a string matches multiple matchers, they are matched accoriding to the priority.
+When a string matches multiple matchers, they are matched according to the priority.
 
 #### Example
 
