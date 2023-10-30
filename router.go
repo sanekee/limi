@@ -17,7 +17,28 @@ const (
 
 type Handler any
 
-// Router is a http router
+// Router is a http router. Router matches host and path with an internal Radix Tree with O(k) complexity.
+//
+// # Pattern
+//
+// Host & path support three types of pattern matching.
+// - String - matches the string as is.
+// - Regexp - matches the string with Regular Expression, and sets the URLParam with the matched value.
+// - Label  - matches the string with wildcard, and sets the URLParam with the matched value.
+//
+// # Example
+//
+// *Host*
+//
+// "static.domain.com",                 // matches the host static.domain.com
+// "{apiVer:v[0-9]+}.api.domain.com",   // matches hosts v1.api.domain.com, v2.api.domain.com ... and sets URLParams["apiVer"] = value
+// "{subdomain}.domain.com",            // matches hosts subdomain1.domain.com, subdomain2.domain.com ... and sets URLParams["subdomain"] = value
+//
+// *Path*
+//
+// "/blog/top" ..              // matches the exact path /blog/top
+// "/blog/{id:[0-9]+}" ..      // matches paths /blog/1, /blog/2 ..., sets URLParams["id"] = <value>
+// "/blog/{slug}" ..           // matches paths /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
 type Router struct {
 	path        string
 	handlerPath string
@@ -31,20 +52,20 @@ type Router struct {
 	isSubRoute bool
 }
 
-// NewRouter returns Router with path preset
+// NewRouter returns Router with path and list of RouterOptions.
 func NewRouter(path string, opts ...RouterOptions) (*Router, error) {
 	r, err := newRouter(path, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	r.notFoundHandler = chainMiddlewares(r.notFoundHandler, r.middlewares...)
+	r.notFoundHandler = attachMiddlewares(r.notFoundHandler, r.middlewares...)
 
 	h := r.methodNotAllowedHandler
 	r.methodNotAllowedHandler = func(allowedMethods ...string) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			handler := h(allowedMethods...)
-			handler = chainMiddlewares(handler, r.middlewares...)
+			handler = attachMiddlewares(handler, r.middlewares...)
 			handler.ServeHTTP(w, req)
 		})
 	}
@@ -53,7 +74,7 @@ func NewRouter(path string, opts ...RouterOptions) (*Router, error) {
 
 type RouterOptions func(r *Router) error
 
-// WithHosts set Router's hosts matcher
+// WithHosts set Router's hosts matcher.
 func WithHosts(hosts ...string) RouterOptions {
 	return func(r *Router) error {
 		if r.isSubRoute {
@@ -72,7 +93,7 @@ func WithHosts(hosts ...string) RouterOptions {
 	}
 }
 
-// WithMiddlewares set Router's middlewares
+// WithMiddlewares set Router's middlewares.
 func WithMiddlewares(mws ...func(http.Handler) http.Handler) RouterOptions {
 	return func(r *Router) error {
 		r.middlewares = append(r.middlewares, mws...)
@@ -80,7 +101,7 @@ func WithMiddlewares(mws ...func(http.Handler) http.Handler) RouterOptions {
 	}
 }
 
-// WithNotFoundHandler set the not found handler
+// WithNotFoundHandler set the not found handler.
 func WithNotFoundHandler(h http.Handler) RouterOptions {
 	return func(r *Router) error {
 		if r.isSubRoute {
@@ -91,7 +112,7 @@ func WithNotFoundHandler(h http.Handler) RouterOptions {
 	}
 }
 
-// WithMethodNotAllowedHandler set the method not allowed handler with list of allowed methods
+// WithMethodNotAllowedHandler set the method not allowed handler with list of allowed methods.
 func WithMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
 	return func(r *Router) error {
 		r.methodNotAllowedHandler = h
@@ -99,7 +120,7 @@ func WithMethodNotAllowedHandler(h func(...string) http.Handler) RouterOptions {
 	}
 }
 
-// WithProfiler add golang profiler reports under /debug/pprof/
+// WithProfiler add golang profiler reports under /debug/pprof/.
 func WithProfiler() RouterOptions {
 	return func(r *Router) error {
 		if err := r.AddHTTPHandler("/debug/pprof/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -119,7 +140,7 @@ func WithProfiler() RouterOptions {
 	}
 }
 
-// WithHandlerPath set Router's handler package base path to find handler's routing path
+// WithHandlerPath set Router's handler package base path to find handler's routing path.
 func WithHandlerPath(path string) RouterOptions {
 	return func(r *Router) error {
 		r.handlerPath = path
@@ -127,7 +148,7 @@ func WithHandlerPath(path string) RouterOptions {
 	}
 }
 
-// ServeHTTP implements the http.Handler interface
+// ServeHTTP handles http request from net/http server.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	if ctx == nil {
@@ -142,12 +163,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if !r.IsSupportedHost(ctx, parseHost(req.Host)) {
 			r.notFoundHandler.ServeHTTP(w, req)
 		}
+		path = req.URL.Path
 	} else {
 		path = limi.GetRoutingPath(ctx)
-	}
-
-	if path == "" {
-		path = req.URL.Path
 	}
 
 	h, trail := r.lookup(ctx, path)
@@ -162,12 +180,15 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.ServeHTTP(w, req)
 }
 
-// AddHandler adds handler with optional middleware
-// handler's path is automatically discovered from
-//   - a 'path' tag in a field named 'limi'
-//   - or assigned based on the package path after a 'handler' directory
+// AddHandler adds handler with a list of middlewares
 //
-// handler's methods fulfill the http.HandlerFunc interface are automatically added
+// # Handler
+//
+// Handler is any struct with http methods (i.e. `GET`, `POST`) as method.
+// Methods with http.HandlerFunc signature are automaticaly added as a HTTP method handler.
+// - Routing path is automatically discovered based on relative path to the router's `HandlerPath`.
+// - Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `limi struct{} `path:"/custom-path"` field in the Handler struct.
+// - Multiple paths can be added to handle multiple paths, e.g. `limi struct{} `path:"/story/cool-path" path:"/story/strange-path" path:"/best-path"`.
 func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) error {
 	rt := reflect.TypeOf(handler)
 	baseRT := rt
@@ -192,12 +213,12 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 			vs := m.Func.Call([]reflect.Value{rv})
 			v := vs[0]
 			if v.Kind() == reflect.Func {
-				methods.m[lName] = chainMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				methods.m[lName] = attachMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 					v.Call([]reflect.Value{reflect.ValueOf(w), reflect.ValueOf(req)})
 				}), mws...)
 			}
 		} else if isHTTPHandlerMethod(m.Func) {
-			methods.m[lName] = chainMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			methods.m[lName] = attachMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				m.Func.Call([]reflect.Value{rv, reflect.ValueOf(w), reflect.ValueOf(req)})
 			}), mws...)
 		}
@@ -223,7 +244,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	return nil
 }
 
-// AddHandlers adds multiple handlers with the same middlewares
+// AddHandlers adds multiple handlers with a list of middlewares.
 func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.Handler) error {
 	for _, h := range handlers {
 		if err := r.AddHandler(h, mws...); err != nil {
@@ -233,27 +254,26 @@ func (r *Router) AddHandlers(handlers []Handler, mws ...func(http.Handler) http.
 	return nil
 }
 
-// AddHandlerFunc adds http handler with path and method
+// AddHandlerFunc adds http handler with path and method.
 func (r *Router) AddHandlerFunc(path string, method string, fn http.HandlerFunc, mws ...func(http.Handler) http.Handler) error {
 	path = r.buildPath(path)
 	return r.insertMethodHandler(path, httpMethodHandlers{
 		m: map[string]http.Handler{
-			method: chainMiddlewares(fn, mws...),
+			method: attachMiddlewares(fn, mws...),
 		},
 		methodNotAllowedHandler: r.methodNotAllowedHandler,
 	})
-
 }
 
-// AddHTTPHandler adds a catch all http handler with path
+// AddHTTPHandler adds a catch all http handler with path.
 func (r *Router) AddHTTPHandler(path string, h http.Handler, mws ...func(http.Handler) http.Handler) error {
 	path = r.buildPath(path)
 	middlewares := append(r.middlewares, mws...)
-	h = chainMiddlewares(h, middlewares...)
+	h = attachMiddlewares(h, middlewares...)
 	return r.node.Insert(path, limi.HTTPHandler(h.ServeHTTP))
 }
 
-// AddRouter adds a sub router
+// AddRouter adds a sub router.
 func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) {
 	nr, err := newRouter(path)
 	if err != nil {
@@ -277,7 +297,7 @@ func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) 
 	nr.methodNotAllowedHandler = func(allowedMethods ...string) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			handler := h(allowedMethods...)
-			handler = chainMiddlewares(handler, nr.middlewares...)
+			handler = attachMiddlewares(handler, nr.middlewares...)
 			handler.ServeHTTP(w, req)
 		})
 	}
@@ -289,7 +309,7 @@ func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) 
 	return nr, nil
 }
 
-// IsSupportedHost match host with supported host
+// IsSupportedHost match host with supported host.
 func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	if r.host == nil {
 		return true
@@ -299,19 +319,22 @@ func (r *Router) IsSupportedHost(ctx context.Context, host string) bool {
 	return h != nil
 }
 
-// IsPartial implemens Node interface, returning true indicate partial match is return for futher matching
+// IsPartial implements Node Handle interface, returning true indicates partial match is return for futher matching.
 func (r *Router) IsPartial() bool {
 	return true
 }
 
+// Merge implements Node Handle interface, returning false cause a Router doesn't merge multiple handles.
 func (r *Router) Merge(limi.Handle) bool {
 	return false
 }
 
+// IsMethodAllowed implements Node Handle interface, returns true to allow all methods on a router Handle
 func (r *Router) IsMethodAllowed(string) bool {
 	return true
 }
 
+// newRouter creates a new Router with list of RouterOptions.
 func newRouter(path string, opts ...RouterOptions) (*Router, error) {
 	r := &Router{
 		path:                    path,
@@ -328,19 +351,20 @@ func newRouter(path string, opts ...RouterOptions) (*Router, error) {
 	return r, nil
 }
 
-// insertMethodHandler inserts new handler
+// insertMethodHandler inserts new handler.
 func (r *Router) insertMethodHandler(path string, h httpMethodHandlers) error {
 	path = r.buildPath(path)
-	handlers := buildHandlers(r.middlewares, h)
+	handlers := buildMethodsHandlers(h, r.middlewares...)
 
 	return r.node.Insert(path, handlers)
 }
 
-// insertRouter inserts new router
+// insertRouter inserts new router.
 func (r *Router) insertRouter(r1 *Router) error {
 	return r.node.Insert(r.buildPath(r1.path), r1)
 }
 
+// lookup lookup for a Handle to path, with the remining unmatched string.
 func (r *Router) lookup(ctx context.Context, path string) (limi.Handle, string) {
 	router := r
 	findPath := path
@@ -348,11 +372,12 @@ func (r *Router) lookup(ctx context.Context, path string) (limi.Handle, string) 
 		h, trail := router.node.Lookup(ctx, findPath)
 
 		// exact match
-		if trail == "" {
+		if h != nil && trail == "" {
 			return h, ""
 		}
 
-		if !h.IsPartial() {
+		// handle not found or (trail is not empty and no sub matchers)
+		if h == nil || !h.IsPartial() {
 			return nil, trail
 		}
 
@@ -366,6 +391,7 @@ func (r *Router) lookup(ctx context.Context, path string) (limi.Handle, string) 
 	}
 }
 
+// buildPath return a subpath relative to the router's path.
 func (r *Router) buildPath(path string) string {
 	if r.isSubRoute {
 		return path
@@ -373,16 +399,18 @@ func (r *Router) buildPath(path string) string {
 	return buildPath(r.path, path)
 }
 
-func buildHandlers(mws []func(http.Handler) http.Handler, hms httpMethodHandlers) httpMethodHandlers {
+// buildMethodsHandlers returns the methods handlers map with middlewares attached.
+func buildMethodsHandlers(hms httpMethodHandlers, mws ...func(http.Handler) http.Handler) httpMethodHandlers {
 	handlers := hms
 
 	for method, h := range hms.m {
-		handlers.m[method] = chainMiddlewares(h, mws...)
+		handlers.m[method] = attachMiddlewares(h, mws...)
 	}
 	return handlers
 }
 
-func chainMiddlewares(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler {
+// attachMiddlewares returns a Handler with list of middlewares attached to handler.
+func attachMiddlewares(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler {
 	if len(mws) == 0 {
 		return h
 	}
@@ -394,6 +422,7 @@ func chainMiddlewares(h http.Handler, mws ...func(http.Handler) http.Handler) ht
 	return h
 }
 
+// buildPath returns a path with parent prefix.
 func buildPath(parent string, path string) string {
 	var p string
 	if parent != "" && parent != "/" {
@@ -407,6 +436,7 @@ func buildPath(parent string, path string) string {
 	return p
 }
 
+// ensureLeadingSlash returns a path with '/' prefix.
 func ensureLeadingSlash(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		return "/" + path
@@ -414,13 +444,12 @@ func ensureLeadingSlash(path string) string {
 	return path
 }
 
+// removeTraillingSlash returns a path without '/'.
 func removeTraillingSlash(path string) string {
-	if strings.HasSuffix(path, "/") {
-		return path[:len(path)-1]
-	}
-	return path
+	return strings.TrimSuffix(path, "/")
 }
 
+// ensureTrailingSlash returns a path with '/' suffix.
 func ensureTrailingSlash(path string) string {
 	if !strings.HasSuffix(path, "/") {
 		return path + "/"
@@ -428,13 +457,12 @@ func ensureTrailingSlash(path string) string {
 	return path
 }
 
+// removeLeadingSlash returns a path without '/' prefix.
 func removeLeadingSlash(path string) string {
-	if strings.HasPrefix(path, "/") {
-		return path[1:]
-	}
-	return path
+	return strings.TrimPrefix(path, "/")
 }
 
+// findHandlerPath returns a string found after the handlerPath
 func findHandlerPath(handlerPath, path string) string {
 	arrPath := strings.SplitAfter(path, handlerPath)
 	if len(arrPath) == 1 {
@@ -444,6 +472,7 @@ func findHandlerPath(handlerPath, path string) string {
 	return strings.Join(arrPath[1:], "/")
 }
 
+// packageName returns the package name from the package path.
 func packageName(path string) string {
 	idx := strings.LastIndexByte(removeTraillingSlash(path), '/')
 	if idx < 0 {
@@ -453,6 +482,7 @@ func packageName(path string) string {
 	return path[idx+1:]
 }
 
+// methodNotAllowedHandler returns a default handler when method a not allow for a path.
 func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		for _, m := range allowedMethods {
@@ -462,7 +492,7 @@ func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 	})
 }
 
-// lookupTags workaround stdlib lookup method which only returns the first result
+// lookupTags extends the stdlib StructTag lookup method to support multiple tags with the same key.
 func lookupTags(tag reflect.StructTag, key string) []string {
 	var arr []string
 	var values []string
@@ -503,6 +533,7 @@ func lookupTags(tag reflect.StructTag, key string) []string {
 	return values
 }
 
+// buildHandlerPaths build list of paths with package path, the struct name and struct tag for router.
 func buildHandlerPaths(pkgPath, structName string, structTag reflect.StructTag) []string {
 	pkgPath = removeTraillingSlash(pkgPath)
 
@@ -531,12 +562,13 @@ func buildHandlerPaths(pkgPath, structName string, structTag reflect.StructTag) 
 	return paths
 }
 
-// Map of HTTP Handlers by Methods
+// Map of HTTP Handlers by Methods.
 type httpMethodHandlers struct {
 	m                       map[string]http.Handler
 	methodNotAllowedHandler func(...string) http.Handler
 }
 
+// keys returns a list of methods supported by the handler.
 func (h httpMethodHandlers) keys() []string {
 	var keys []string
 	for k := range h.m {
@@ -545,15 +577,18 @@ func (h httpMethodHandlers) keys() []string {
 	return keys
 }
 
+// IsPartial implements Node Handle interface, returning false indicates partial match is not handled.
 func (h httpMethodHandlers) IsPartial() bool {
 	return false
 }
 
+// IsMethodAllowed implements Node Handle interface, returns true when the method is supported.
 func (h httpMethodHandlers) IsMethodAllowed(method string) bool {
 	_, ok := h.m[method]
 	return ok
 }
 
+// ServeHTTP implements Node Handle interface, handles net/http server requests.
 func (h httpMethodHandlers) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	hdl, ok := h.m[req.Method]
 	if !ok {
@@ -563,6 +598,9 @@ func (h httpMethodHandlers) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	hdl.ServeHTTP(w, req)
 }
 
+// Merge implements Node Handle interface, merges the handler from h1.
+// Returns true when existing handler is not found.
+// Returns false when existing handler is found.
 func (h httpMethodHandlers) Merge(h1 limi.Handle) bool {
 	hMap, ok := h1.(httpMethodHandlers)
 	if !ok {
@@ -629,6 +667,7 @@ func isHTTPHandlerMethod(v reflect.Value) bool {
 		i2.AssignableTo(c2)
 }
 
+// parseHost return the host part of the req.Host
 func parseHost(str string) string {
 	arr := strings.Split(str, ":")
 
@@ -639,18 +678,23 @@ func parseHost(str string) string {
 	return arr[0]
 }
 
+// hostHandler is a node Handle to match router's host
 type hostHandler struct{}
 
+// IsPartial implements Node Handle interface, returning false indicates partial match is not handled.
 func (h hostHandler) IsPartial() bool {
 	return false
 }
 
+// Merge implements Node Handle interface, returning false indicates merging is not allowed.
 func (h hostHandler) Merge(limi.Handle) bool {
 	return false
 }
 
+// IsMethodAllowed implements Node Handle interface, returns true to handle all http methods.
 func (h hostHandler) IsMethodAllowed(string) bool {
 	return true
 }
 
+// ServeHTTP implements Node Handle interface, handles net/http server requests.
 func (h hostHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}

@@ -151,6 +151,10 @@ func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 		return nil, ""
 	}
 
+	if n.matcher == nil {
+		return nil, str
+	}
+
 	isMatched, matched, trail := n.matcher.Match(ctx, str)
 	if isMatched && n.handle != nil {
 		return n.handle, trail

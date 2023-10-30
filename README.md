@@ -15,7 +15,7 @@ Limi is a lightweight go http router. The goal of the project is to make writing
 | --- | --- |
 | Router | Router is the core of limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. limi Router is fully compatible with `net/http`. |
 | Handler | Handler is the function that handle the http request, limi Handler is fully compaitble with `net/http` `http.Handler`. |
-| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. limi middlewares are compaible with middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
+| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. Limi middlewares are compaible with generic middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
 | Mux | Mux is a router multiplexer, mux is used to serve single HTTP listener with multiple routers. Requests are handled by the order the routers were added. |
 
 ## Usage
@@ -248,7 +248,7 @@ Mux is the router multiplexer. Using mux when we need multiple routers in a sing
 
 #### Example
 
-Full example can be found in [example/blog](example/blog).
+Full example can be found in [example/mux](example/mux).
 
 ```golang
 r1, err := limi.NewRouter(
@@ -280,8 +280,7 @@ r2.AddHTTPHandler("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Re
     w.Write([]byte("V2")) // nolint:errcheck
 }))
 
-m := limi.Mux()
-m.AddRouters(r1, r2)
+m := limi.NewMux(r1, r2)
 
 if err := http.ListenAndServe(":3333", m); err != nil {
     panic(err)
@@ -305,14 +304,14 @@ When a string matches multiple matchers, they are matched according to the prior
 ```golang
 r, _ := NewRouter("/", 
     WithHosts(
-        "static.domain.com",                 // matches host static.domain.com 
-        "{apiVer:v[0-9]+}.api.domain.com",   // matches host v1.api.domain.com, v2.api.domain.com ... and sets URLParams["apiVer"] = value
-        "{subdomain}.domain.com",            // matches host subdomain1.domain.com, subdomain2.domain.com ... and sets URLParams["subdomain"] = value
+        "static.domain.com",                 // matches the host static.domain.com 
+        "{apiVer:v[0-9]+}.api.domain.com",   // matches hosts v1.api.domain.com, v2.api.domain.com ... and sets URLParams["apiVer"] = value
+        "{subdomain}.domain.com",            // matches hosts subdomain1.domain.com, subdomain2.domain.com ... and sets URLParams["subdomain"] = value
 ))
 
-r.AddHandlerFunc("/blog/top" ..              // matches the exact path /blog/top
+r.AddHandlerFunc("/blog/top" ..              // matches the path /blog/top
 
-r.AddHandlerFunc("/blog/{id:[0-9]+}" ..      // matches the path /blog/1, /blog/2 ..., sets URLParams["id"] = <value>
+r.AddHandlerFunc("/blog/{id:[0-9]+}" ..      // matches paths /blog/1, /blog/2 ..., sets URLParams["id"] = <value>
 
-r.AddHandlerFunc("/blog/{slug}" ..           // matches the path /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
+r.AddHandlerFunc("/blog/{slug}" ..           // matches paths /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
 ```

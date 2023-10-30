@@ -568,6 +568,26 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(body))
 	})
+
+	t.Run("add with interface with handler", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		testFoo := foo.Foo{}
+		var fooInterface interface{} = testFoo
+		err = r.AddHandler(fooInterface)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo", string(body))
+	})
 }
 
 func TestAddRouter(t *testing.T) {
@@ -696,6 +716,34 @@ func TestAddRouter(t *testing.T) {
 		body, err = io.ReadAll(rec.Body)
 		require.NoError(t, err)
 		require.Equal(t, "foooo/bar", string(body))
+	})
+
+	t.Run("lookup inexistence route", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusNotFound, rec.Result().StatusCode)
+	})
+
+	t.Run("lookup inexistence sub route", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		_, err = r.AddRouter("/foo")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo")))
+		require.Error(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusNotFound, rec.Result().StatusCode)
 	})
 
 	t.Run("host", func(t *testing.T) {

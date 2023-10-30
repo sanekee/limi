@@ -38,8 +38,7 @@ func main() {
 		w.Write([]byte("V2")) // nolint:errcheck
 	}))
 
-	m := limi.Mux()
-	m.AddRouters(r1, r2)
+	m := limi.NewMux(r1, r2)
 
 	if err := http.ListenAndServe(":3333", m); err != nil {
 		panic(err)
