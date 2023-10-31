@@ -5,10 +5,12 @@ import (
 	"time"
 )
 
+// Logger interace.
 type Logger interface {
 	Println(arg ...any)
 }
 
+// Log middleware log the request with response code and latency.
 func Log(log Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -21,17 +23,20 @@ func Log(log Logger) func(http.Handler) http.Handler {
 	}
 }
 
+// responseWriter is the response recorder.
 type responseWriter struct {
 	statusCode    int
 	contentLength int
 	http.ResponseWriter
 }
 
+// WriteHeader record response statusCode.
 func (r *responseWriter) WriteHeader(statusCode int) {
 	r.statusCode = statusCode
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
+// Write record response body length.
 func (r *responseWriter) Write(b []byte) (int, error) {
 	w, err := r.ResponseWriter.Write(b)
 	if err != nil {

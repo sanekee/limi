@@ -1465,36 +1465,48 @@ func TestBuildHandlerPath(t *testing.T) {
 	tests := []testSt{
 		{
 			testName:   "package path + same struct name",
-			pkgPath:    "/foo",
+			pkgPath:    "/pkg/handler/foo",
 			structName: "Foo",
 			expected:   []string{"/foo"},
 		},
 		{
 			testName:   "package path + different struct name",
-			pkgPath:    "/foo",
+			pkgPath:    "/pkg/handler/foo",
 			structName: "FooBar",
 			expected:   []string{"/foo/foobar"},
 		},
 		{
 			testName:   "package path + struct name + tag absolute path",
-			pkgPath:    "/foo",
+			pkgPath:    "/pkg/hanler/foo",
 			structName: "FooBar",
 			tag:        `path:"/tagpath"`,
 			expected:   []string{"/tagpath"},
 		},
 		{
 			testName:   "package path + struct name + tag relative path",
-			pkgPath:    "/foo",
+			pkgPath:    "/pkg/handler/foo",
 			structName: "FooBar",
 			tag:        `path:"tagpath"`,
 			expected:   []string{"/foo/tagpath"},
 		},
 		{
 			testName:   "package path + struct name + multiple tag paths",
-			pkgPath:    "/foo",
+			pkgPath:    "/pkg/handler/foo",
 			structName: "FooBar",
 			tag:        `path:"tagpath" path:"/absolutetag", path:"./"`,
 			expected:   []string{"/foo/tagpath", "/absolutetag", "/foo/"},
+		},
+		{
+			testName:   "package path as root",
+			pkgPath:    "/pkg/handler",
+			structName: "Handler",
+			expected:   []string{"/"},
+		},
+		{
+			testName:   "package index as root",
+			pkgPath:    "/pkg/handler/foo",
+			structName: "Index",
+			expected:   []string{"/foo"},
 		},
 	}
 
@@ -1502,7 +1514,7 @@ func TestBuildHandlerPath(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			actual := buildHandlerPaths(test.pkgPath, test.structName, test.tag)
+			actual := buildHandlerPaths("handler", test.pkgPath, test.structName, test.tag)
 			require.Equal(t, test.expected, actual)
 		})
 	}

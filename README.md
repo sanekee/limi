@@ -101,6 +101,107 @@ if err != nil {
 | AddHandlerFunc | http.HandlerFunc | `http.HandlerFunc` is `net/http` handler function. |
 | AddHTTPHandler | http.Handler | `http.Handler` is `net/http` handler with `ServeHTTP` method, using this as a catch all handler. |
 
+#### Path Discovery
+
+Below are path discovery under different scenarios using the router's default HandlerPath (`handler`)
+
+- Struct with the same name or named "Index" is added as the index handler.
+
+```golang
+// package /pkg/handler
+package handler
+
+type Index struct{}          // path => /
+
+// package /pkg/handler
+package handler
+
+type Handler struct{}        // path => /
+
+// package /pkg/handler/bar
+package bar
+
+type Index struct{}          // path => /bar
+
+// package /pkg/handler/foo
+package foo
+
+type Foo struct{}            // path => /foo
+```
+
+- Other struct is added as a handler with their lowercase name.
+
+```golang
+// package /pkg/handler
+package handler
+
+type Foo struct{}          // path => /foo
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{}          // path => /foo/bar
+```
+
+- Path definition with the `limi` struct tag.
+
+```golang
+// package /pkg/handler
+package handler
+
+type Foo struct{
+    limit struct{} `path="./"`                // path => /                 // ./ is added as index handler
+}          
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{
+    limit struct{} `path="foo"`                // path => /foo/foo         // relative path to the package
+}          
+
+// package /pkg/handler/foo
+package handler
+
+type HandleByID struct{
+    limit struct{} `path="{id:[0-9]+}"`        // path => /foo/{id:[0-9]+} // relative regexp path to the package
+}          
+
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{
+    limit struct{} `path="/"`                 // path => /                 // absolute path
+}          
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{
+    limit struct{} `path="/tar/bar/zar"`     // path => /tar/bar/zar       // absolute path #2
+}          
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{
+    limit struct{} `path="/user/{id}/story/{slug:.*}"`  // path => /foo/{id}/bar/{slug:.*}
+                                                        // absolute path with a label matcher {id} and a regexp matcher {slug:.*}       
+}          
+```
+
+- Multiple paths definition with the `limi` struct tag. (Non standard struct tag, will break some linter.)
+
+```golang
+// package /pkg/handler
+package handler
+
+type Foo struct{
+    limit struct{} `path="./" path="/good/foo" path="/bad/foo`  // path => /, /good/foo, /bad/foo
+}          
+```
+
 #### Example
 
 Full example can be found in [example/blog](example/blog).

@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	defaultHandlerPath = "handler"
+	defaultHandlerPath     = "handler"
+	defaultIndexStructName = "index"
 )
 
 type Handler any
@@ -234,7 +235,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 		tag = field.Tag
 	}
 
-	paths := buildHandlerPaths(findHandlerPath(r.handlerPath, baseRT.PkgPath()), baseRT.Name(), tag)
+	paths := buildHandlerPaths(r.handlerPath, baseRT.PkgPath(), baseRT.Name(), tag)
 	for _, path := range paths {
 		if err := r.insertMethodHandler(path, methods); err != nil {
 			return fmt.Errorf("failed to insert methods handler with path %s %w", path, err)
@@ -534,17 +535,16 @@ func lookupTags(tag reflect.StructTag, key string) []string {
 }
 
 // buildHandlerPaths build list of paths with package path, the struct name and struct tag for router.
-func buildHandlerPaths(pkgPath, structName string, structTag reflect.StructTag) []string {
-	pkgPath = removeTraillingSlash(pkgPath)
+func buildHandlerPaths(handlerPath, pkgPath, structName string, structTag reflect.StructTag) []string {
 
 	paths := lookupTags(structTag, "path")
 	structName = strings.ToLower(structName)
-
+	pkgName := packageName(pkgPath)
+	trimmedPkgPath := removeTraillingSlash(findHandlerPath(handlerPath, pkgPath))
 	// no path tag found, default to pkgPath + structname
 	if len(paths) == 0 {
-		pkgName := packageName(pkgPath)
-		path := pkgPath
-		if pkgName != structName {
+		path := trimmedPkgPath
+		if pkgName != structName && structName != defaultIndexStructName {
 			path += ensureLeadingSlash(structName)
 		}
 		paths = append(paths, path)
@@ -554,7 +554,7 @@ func buildHandlerPaths(pkgPath, structName string, structTag reflect.StructTag) 
 	for i, path := range paths {
 		if !strings.HasPrefix(path, "/") {
 			path = strings.TrimPrefix(path, ".")
-			path = pkgPath + ensureLeadingSlash(path)
+			path = trimmedPkgPath + ensureLeadingSlash(path)
 		}
 		paths[i] = path
 	}

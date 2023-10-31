@@ -25,3 +25,5 @@ go.work
 .bash_profile
 
 __debug*
+
+TODO.txt
