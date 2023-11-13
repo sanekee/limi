@@ -22,8 +22,9 @@ func NewMux(routers ...*Router) *mux {
 }
 
 // AddRouters adds a list of routers to the multiplexer
-func (m *mux) AddRouters(routers ...*Router) {
+func (m *mux) AddRouters(routers ...*Router) *mux {
 	m.routers = append(m.routers, routers...)
+	return m
 }
 
 // AddRouter creates a new router with optional list of RouterOptions and adds the new router to the multiplexer
@@ -38,8 +39,9 @@ func (m *mux) AddRouter(path string, opts ...RouterOptions) (*Router, error) {
 }
 
 // SetNotFoundHandler sets the not found handler.
-func (m *mux) SetNotFoundHandler(h http.Handler) {
+func (m *mux) SetNotFoundHandler(h http.Handler) *mux {
 	m.notFoundHandler = h
+	return m
 }
 
 // ServeHTTP handle HTTP request from net/http server.
