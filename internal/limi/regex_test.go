@@ -7,7 +7,7 @@ import (
 	"github.com/sanekee/limi/internal/testing/require"
 )
 
-func TestRegexp(t *testing.T) {
+func TestRegexpParse(t *testing.T) {
 	t.Run("helper", func(t *testing.T) {
 		s := NewRegexpMatcher("foo:.*")
 		require.Equal(t, "regexp:foo:.*", s.Data())
@@ -59,15 +59,16 @@ func TestRegexp(t *testing.T) {
 			NewRegexpMatcher("foo:[")
 		})
 	})
+}
 
+func TestRegexpMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
 		ctx := NewContext(context.Background())
 
 		s := NewRegexpMatcher("foo:.*")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foo")
+		isMatched, trail1 := s.Match(ctx, "foo")
 		require.True(t, isMatched)
-		require.Equal(t, "foo", matched)
 		require.Empty(t, trail1)
 		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
 	})
@@ -77,9 +78,8 @@ func TestRegexp(t *testing.T) {
 
 		s := NewRegexpMatcher("foo:.*")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar")
+		isMatched, trail1 := s.Match(ctx, "foobar")
 		require.True(t, isMatched)
-		require.Equal(t, "foobar", matched)
 		require.Empty(t, trail1)
 		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
 	})
@@ -90,9 +90,8 @@ func TestRegexp(t *testing.T) {
 		s := NewRegexpMatcher("foo:.*")
 		s.SetTrail('b')
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar")
-		require.False(t, isMatched)
-		require.Equal(t, "foo", matched)
+		isMatched, trail1 := s.Match(ctx, "foobar")
+		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
 		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
 	})
@@ -102,9 +101,8 @@ func TestRegexp(t *testing.T) {
 
 		s := NewRegexpMatcher("foo:[a-z]+")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar012345")
-		require.False(t, isMatched)
-		require.Equal(t, "foobar", matched)
+		isMatched, trail1 := s.Match(ctx, "foobar012345")
+		require.True(t, isMatched)
 		require.Equal(t, "012345", trail1)
 		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
 	})

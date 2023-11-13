@@ -13,7 +13,7 @@ func NewLabelMatcher(str string) *LabelMatcher {
 	return &LabelMatcher{data: str}
 }
 
-func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string, string) {
+func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
 	var matched []byte
 	for _, b := range str {
 		if s.trail != 0 &&
@@ -23,13 +23,13 @@ func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string, str
 		matched = append(matched, byte(b))
 	}
 
-	isMatched := len(matched) == len(str)
+	isMatched := len(matched) != 0
 	trail := str[len(matched):]
 
 	if len(matched) > 0 {
 		SetURLParam(ctx, s.data, string(matched))
 	}
-	return isMatched, string(matched), trail
+	return isMatched, trail
 }
 
 func (s *LabelMatcher) Parse(str string) (bool, string, string, string) {

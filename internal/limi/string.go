@@ -10,9 +10,9 @@ func NewStringMatcher(str string) *StringMatcher {
 	return &StringMatcher{data: str}
 }
 
-func (s *StringMatcher) Match(ctx context.Context, str string) (bool, string, string) {
+func (s *StringMatcher) Match(ctx context.Context, str string) (bool, string) {
 	if s.data == str {
-		return true, str, ""
+		return true, ""
 	}
 
 	slen := min(len(str), len(s.data))
@@ -25,12 +25,12 @@ func (s *StringMatcher) Match(ctx context.Context, str string) (bool, string, st
 	}
 
 	if string(matched) != s.data {
-		return false, "", str
+		return false, str
 	}
 
 	//partial match
 	trail1 := str[len(matched):]
-	return false, string(matched), trail1
+	return true, trail1
 
 }
 

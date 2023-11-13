@@ -7,7 +7,7 @@ import (
 	"github.com/sanekee/limi/internal/testing/require"
 )
 
-func TestString(t *testing.T) {
+func TestStringParse(t *testing.T) {
 	t.Run("helper", func(t *testing.T) {
 		s := NewStringMatcher("foo")
 		require.Equal(t, "foo", s.Data())
@@ -53,15 +53,16 @@ func TestString(t *testing.T) {
 		require.Equal(t, "tar", trail1)
 		require.Equal(t, "baz", trail2)
 	})
+}
 
+func TestStringMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
 		ctx := context.Background()
 
 		s := NewStringMatcher("foo")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foo")
+		isMatched, trail1 := s.Match(ctx, "foo")
 		require.True(t, isMatched)
-		require.Equal(t, "foo", matched)
 		require.Empty(t, trail1)
 	})
 
@@ -70,9 +71,8 @@ func TestString(t *testing.T) {
 
 		s := NewStringMatcher("foo")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar")
-		require.False(t, isMatched)
-		require.Equal(t, "foo", matched)
+		isMatched, trail1 := s.Match(ctx, "foobar")
+		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
 	})
 
@@ -81,9 +81,8 @@ func TestString(t *testing.T) {
 
 		s := NewStringMatcher("foobar")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foo")
+		isMatched, trail1 := s.Match(ctx, "foo")
 		require.False(t, isMatched)
-		require.Empty(t, matched)
 		require.Equal(t, "foo", trail1)
 	})
 
@@ -92,9 +91,8 @@ func TestString(t *testing.T) {
 
 		s := NewStringMatcher("foobaz")
 
-		isMatched, matched, trail1 := s.Match(ctx, "footar")
+		isMatched, trail1 := s.Match(ctx, "footar")
 		require.False(t, isMatched)
-		require.Empty(t, matched)
 		require.Equal(t, "footar", trail1)
 	})
 }

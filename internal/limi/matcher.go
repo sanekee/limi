@@ -18,7 +18,7 @@ const (
 
 type Matcher interface {
 	Parse(string) (bool, string, string, string)
-	Match(context.Context, string) (bool, string, string)
+	Match(context.Context, string) (bool, string)
 	Type() MatcherType
 	Data() string
 }

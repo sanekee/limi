@@ -20,24 +20,28 @@ func NewRegexpMatcher(str string) *RegexpMatcher {
 	return &RegexpMatcher{label: strArr[0], regexp: regexp.MustCompile(strArr[1])}
 }
 
-func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string, string) {
+func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string) {
 	var testStr []byte
-	for _, b := range str {
-		if s.trail != 0 &&
-			s.trail == byte(b) {
-			break
+
+	if s.trail == 0 {
+		testStr = []byte(str)
+	} else {
+		for _, b := range str {
+			if s.trail == byte(b) {
+				break
+			}
+			testStr = append(testStr, byte(b))
 		}
-		testStr = append(testStr, byte(b))
 	}
 
 	matched := s.regexp.Find(testStr)
-	isMatched := len(matched) == len(str)
+	isMatched := len(matched) != 0
 	trail := str[len(matched):]
 
 	if len(matched) > 0 {
 		SetURLParam(ctx, s.label, string(matched))
 	}
-	return isMatched, string(matched), trail
+	return isMatched, trail
 }
 
 func (s *RegexpMatcher) Parse(str string) (bool, string, string, string) {

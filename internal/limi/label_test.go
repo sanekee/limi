@@ -7,7 +7,7 @@ import (
 	"github.com/sanekee/limi/internal/testing/require"
 )
 
-func TestLabel(t *testing.T) {
+func TestLabelParse(t *testing.T) {
 	t.Run("helper", func(t *testing.T) {
 		s := NewLabelMatcher("foo")
 		require.Equal(t, "label:foo", s.Data())
@@ -66,15 +66,16 @@ func TestLabel(t *testing.T) {
 		require.Equal(t, "{}", trail1)
 		require.Equal(t, "{foo}", trail2)
 	})
+}
 
+func TestLabelMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
 		ctx := context.Background()
 
 		s := NewLabelMatcher("foo")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foo")
+		isMatched, trail1 := s.Match(ctx, "foo")
 		require.True(t, isMatched)
-		require.Equal(t, "foo", matched)
 		require.Empty(t, trail1)
 	})
 
@@ -83,9 +84,8 @@ func TestLabel(t *testing.T) {
 
 		s := NewLabelMatcher("foo")
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar")
+		isMatched, trail1 := s.Match(ctx, "foobar")
 		require.True(t, isMatched)
-		require.Equal(t, "foobar", matched)
 		require.Empty(t, trail1)
 		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
 	})
@@ -96,9 +96,8 @@ func TestLabel(t *testing.T) {
 		s := NewLabelMatcher("foo")
 		s.SetTrail('b')
 
-		isMatched, matched, trail1 := s.Match(ctx, "foobar")
-		require.False(t, isMatched)
-		require.Equal(t, "foo", matched)
+		isMatched, trail1 := s.Match(ctx, "foobar")
+		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
 		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
 	})

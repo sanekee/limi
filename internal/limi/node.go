@@ -155,15 +155,18 @@ func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 		return nil, str
 	}
 
-	isMatched, matched, trail := n.matcher.Match(ctx, str)
-	if isMatched && n.handle != nil {
+	isMatched, trail := n.matcher.Match(ctx, str)
+	// fully matched
+	if isMatched && trail == "" && n.handle != nil {
 		return n.handle, trail
 	}
 
-	if len(matched) == 0 {
+	// no match
+	if trail == str {
 		return nil, trail
 	}
 
+	// lookup partial match
 	for _, nn := range n.children {
 		h, trail := lookup(ctx, nn, trail)
 		if h != nil {
@@ -171,9 +174,10 @@ func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 		}
 	}
 
-	if n.handle != nil &&
-		n.handle.IsPartial() &&
-		matched == n.matcher.Data() {
+	// partial match with partial handler
+	if isMatched &&
+		n.handle != nil &&
+		n.handle.IsPartial() {
 		return n.handle, trail
 	}
 	return nil, ""
