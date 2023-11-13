@@ -63,3 +63,7 @@ func min(i1, i2 int) int {
 	}
 	return i2
 }
+
+func (s *StringMatcher) Label() string {
+	return ""
+}

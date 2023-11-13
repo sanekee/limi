@@ -588,6 +588,37 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(body))
 	})
+
+	t.Run("bug: add label & longer label", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}/edit", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}/edit")))
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}")))
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo{id}", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1/edit", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "foo{id}/edit", string(body))
+	})
 }
 
 func TestAddRouter(t *testing.T) {

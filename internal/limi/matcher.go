@@ -21,6 +21,7 @@ type Matcher interface {
 	Match(context.Context, string) (bool, string)
 	Type() MatcherType
 	Data() string
+	Label() string
 }
 
 type Parser struct {

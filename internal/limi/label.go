@@ -5,12 +5,12 @@ import (
 )
 
 type LabelMatcher struct {
-	data  string
+	label string
 	trail byte
 }
 
 func NewLabelMatcher(str string) *LabelMatcher {
-	return &LabelMatcher{data: str}
+	return &LabelMatcher{label: str}
 }
 
 func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
@@ -27,7 +27,7 @@ func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
 	trail := str[len(matched):]
 
 	if len(matched) > 0 {
-		SetURLParam(ctx, s.data, string(matched))
+		SetURLParam(ctx, s.label, string(matched))
 	}
 	return isMatched, trail
 }
@@ -36,19 +36,19 @@ func (s *LabelMatcher) Parse(str string) (bool, string, string, string) {
 	if len(str) < 3 ||
 		str[0] != '{' ||
 		str[len(str)-1] != '}' {
-		return false, "", str, "{" + s.data + "}"
+		return false, "", str, "{" + s.label + "}"
 	}
 
 	label := str[1 : len(str)-1]
-	if label == s.data {
+	if label == s.label {
 		return true, str, "", ""
 	}
 
-	return false, "", str, "{" + s.data + "}"
+	return false, "", str, "{" + s.label + "}"
 }
 
 func (s *LabelMatcher) Data() string {
-	ret := "label:" + s.data
+	ret := "label:" + s.label
 	if s.trail != 0 {
 		ret += ":" + string(s.trail)
 	}
@@ -61,4 +61,8 @@ func (s *LabelMatcher) Type() MatcherType {
 
 func (s *LabelMatcher) SetTrail(trail byte) {
 	s.trail = trail
+}
+
+func (s *LabelMatcher) Label() string {
+	return s.label
 }

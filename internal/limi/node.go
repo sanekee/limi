@@ -78,6 +78,16 @@ func insert(n *Node, p Parser) (*Node, string, error) {
 	str := p.Str
 	if n.matcher.Type() != p.Type {
 		newNode := &Node{matcher: NewMatcher(p)}
+		if p.Type == TypeLabel ||
+			p.Type == TypeRegexp {
+			// find existing node with the same matcher
+			for _, nn := range n.children {
+				if nn.matcher.Type() == newNode.matcher.Type() &&
+					nn.matcher.Label() == newNode.matcher.Label() {
+					return nn, "", nil
+				}
+			}
+		}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
 		return newNode, "", nil

@@ -74,3 +74,7 @@ func (s *RegexpMatcher) Type() MatcherType {
 func (s *RegexpMatcher) SetTrail(trail byte) {
 	s.trail = trail
 }
+
+func (s *RegexpMatcher) Label() string {
+	return s.label
+}
