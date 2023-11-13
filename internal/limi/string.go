@@ -24,8 +24,13 @@ func (s *StringMatcher) Match(ctx context.Context, str string) (bool, string, st
 		matched = append(matched, str[i])
 	}
 
+	if string(matched) != s.data {
+		return false, "", str
+	}
+
+	//partial match
 	trail1 := str[len(matched):]
-	return str == s.data, string(matched), trail1
+	return false, string(matched), trail1
 
 }
 

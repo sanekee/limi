@@ -83,8 +83,8 @@ func TestString(t *testing.T) {
 
 		isMatched, matched, trail1 := s.Match(ctx, "foo")
 		require.False(t, isMatched)
-		require.Equal(t, "foo", matched)
-		require.Empty(t, trail1)
+		require.Empty(t, matched)
+		require.Equal(t, "foo", trail1)
 	})
 
 	t.Run("match - data input partial matched", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestString(t *testing.T) {
 
 		isMatched, matched, trail1 := s.Match(ctx, "footar")
 		require.False(t, isMatched)
-		require.Equal(t, "foo", matched)
-		require.Equal(t, "tar", trail1)
+		require.Empty(t, matched)
+		require.Equal(t, "footar", trail1)
 	})
 }

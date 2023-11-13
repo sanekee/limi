@@ -549,7 +549,7 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo1", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/foo1", nil)
 
 		r.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
@@ -559,7 +559,7 @@ func TestAddHandler(t *testing.T) {
 		require.Equal(t, "foo", string(body))
 
 		rec = httptest.NewRecorder()
-		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo2", nil)
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/foo2", nil)
 
 		r.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
