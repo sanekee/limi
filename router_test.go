@@ -593,10 +593,10 @@ func TestAddHandler(t *testing.T) {
 		r, err := NewRouter("/")
 		require.NoError(t, err)
 
-		err = r.AddHandlerFunc("/foo/{id}/edit", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}/edit")))
+		err = r.AddHandlerFunc("/foo/{id}", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}")))
 		require.NoError(t, err)
 
-		err = r.AddHandlerFunc("/foo/{id}", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}")))
+		err = r.AddHandlerFunc("/foo/{id}/edit", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("foo{id}/edit")))
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
