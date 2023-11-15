@@ -78,60 +78,71 @@ func insert(n *Node, p Parser) (*Node, string, error) {
 	str := p.Str
 	if n.matcher.Type() != p.Type {
 		newNode := &Node{matcher: NewMatcher(p)}
-		if p.Type == TypeLabel ||
-			p.Type == TypeRegexp {
-			// find existing node with the same matcher
-			for _, nn := range n.children {
-				if nn.matcher.Type() == newNode.matcher.Type() &&
-					nn.matcher.Label() == newNode.matcher.Label() {
-					return nn, "", nil
-				}
-			}
-		}
-		n.children = append(n.children, newNode)
-		sort.Sort(n.children)
-		return newNode, "", nil
-	}
-
-	isMatched, matched, trailStr, trailNode := n.matcher.Parse(str)
-	if isMatched {
-		return n, "", nil
-	}
-
-	if len(matched) == 0 {
-		return nil, str, nil
-	}
-
-	// reparent current string's remainder
-	if trailNode != "" {
-		children, handle := n.children, n.handle
-
-		n.matcher = NewStringMatcher(matched)
-		n.children = append([]*Node{}, &Node{children: children, handle: handle, matcher: NewStringMatcher(trailNode)})
-		n.handle = nil
-	}
-
-	// search new string's remainder
-	str = trailStr
-	if trailStr != "" {
+		// find existing node with the same matcher
 		for _, nn := range n.children {
 			if nn.matcher.Type() != p.Type {
 				continue
 			}
-			nnn, str1, err := insert(nn, Parser{Str: str, Type: p.Type})
+			node, remainder, err := insert(nn, p)
 			if err != nil {
-				return nil, str, fmt.Errorf("failed to insert node %w", err)
+				return nil, p.Str, err
 			}
-			if str1 == "" {
-				return nnn, "", nil
+			if remainder == "" {
+				return node, "", nil
 			}
-			str = str1
 		}
-		newNode := &Node{matcher: NewStringMatcher(str)}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
-
 		return newNode, "", nil
+	}
+
+	// string matcher will build trie with partial match
+	if p.Type == TypeString {
+		isMatched, matched, trailStr, trailNode := n.matcher.Parse(str)
+		if isMatched {
+			return n, "", nil
+		}
+
+		if len(matched) == 0 {
+			return nil, str, nil
+		}
+
+		// reparent current string's remainder
+		if trailNode != "" {
+			children, handle := n.children, n.handle
+
+			n.matcher = NewStringMatcher(matched)
+			n.children = append([]*Node{}, &Node{children: children, handle: handle, matcher: NewStringMatcher(trailNode)})
+			n.handle = nil
+		}
+
+		// search new string's remainder
+		str = trailStr
+		if trailStr != "" {
+			for _, nn := range n.children {
+				if nn.matcher.Type() != p.Type {
+					continue
+				}
+				nnn, str1, err := insert(nn, Parser{Str: str, Type: p.Type})
+				if err != nil {
+					return nil, str, fmt.Errorf("failed to insert node %w", err)
+				}
+				if str1 == "" {
+					return nnn, "", nil
+				}
+				str = str1
+			}
+			newNode := &Node{matcher: NewStringMatcher(str)}
+			n.children = append(n.children, newNode)
+			sort.Sort(n.children)
+
+			return newNode, "", nil
+		}
+	}
+
+	// other matchers will have exact match
+	if n.matcher.Label() == p.Str {
+		return n, "", nil
 	}
 
 	return n, str, nil

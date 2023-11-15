@@ -619,6 +619,50 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo{id}/edit", string(body))
 	})
+
+	t.Run("bug: add label & longer label #2", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}/bar/{index}/var/new", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("/foo/{id}/bar/{index}/var/new")))
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}/bar/{index}", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("/foo/{id}/bar/{index}")))
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}/bar/index", http.MethodGet, handler.NewHandlerFunc(http.StatusOK, nil, []byte("/foo/{id}/bar/index")))
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1/bar/1", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "/foo/{id}/bar/{index}", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1/bar/1/var/new", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "/foo/{id}/bar/{index}/var/new", string(body))
+
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/1/bar/index", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err = io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "/foo/{id}/bar/index", string(body))
+	})
 }
 
 func TestAddRouter(t *testing.T) {
