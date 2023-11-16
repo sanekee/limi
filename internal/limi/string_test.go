@@ -17,7 +17,7 @@ func TestStringParse(t *testing.T) {
 	t.Run("parse - exact matched", func(t *testing.T) {
 		s := NewStringMatcher("foo")
 
-		isMatched, matched, trail1, trail2 := s.Parse("foo")
+		isMatched, matched, trail1, trail2 := s.Parse(Parser{Type: TypeString, Str: "foo"})
 		require.True(t, isMatched)
 		require.Equal(t, "foo", matched)
 		require.Empty(t, trail1)
@@ -27,7 +27,7 @@ func TestStringParse(t *testing.T) {
 	t.Run("parse - partial matched", func(t *testing.T) {
 		s := NewStringMatcher("foo")
 
-		isMatched, matched, trail1, trail2 := s.Parse("foobar")
+		isMatched, matched, trail1, trail2 := s.Parse(Parser{Type: TypeString, Str: "foobar"})
 		require.False(t, isMatched)
 		require.Equal(t, "foo", matched)
 		require.Equal(t, "bar", trail1)
@@ -37,7 +37,7 @@ func TestStringParse(t *testing.T) {
 	t.Run("parse - data partial matched", func(t *testing.T) {
 		s := NewStringMatcher("foobar")
 
-		isMatched, matched, trail1, trail2 := s.Parse("foo")
+		isMatched, matched, trail1, trail2 := s.Parse(Parser{Type: TypeString, Str: "foo"})
 		require.False(t, isMatched)
 		require.Equal(t, "foo", matched)
 		require.Empty(t, trail1)
@@ -47,7 +47,7 @@ func TestStringParse(t *testing.T) {
 	t.Run("parse - data input partial matched", func(t *testing.T) {
 		s := NewStringMatcher("foobaz")
 
-		isMatched, matched, trail1, trail2 := s.Parse("footar")
+		isMatched, matched, trail1, trail2 := s.Parse(Parser{Type: TypeString, Str: "footar"})
 		require.False(t, isMatched)
 		require.Equal(t, "foo", matched)
 		require.Equal(t, "tar", trail1)

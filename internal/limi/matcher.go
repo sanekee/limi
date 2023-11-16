@@ -17,7 +17,7 @@ const (
 )
 
 type Matcher interface {
-	Parse(string) (bool, string, string, string)
+	Parse(Parser) (bool, string, string, string)
 	Match(context.Context, string) (bool, string)
 	Type() MatcherType
 	Data() string
@@ -43,7 +43,8 @@ func SplitParsers(str string) ([]Parser, error) {
 			if idx < 0 {
 				return nil, fmt.Errorf("missing closing } in label %w", ErrInvalidInput)
 			}
-			parse, next = parse[1:idx], parse[idx+1:]
+
+			parse, next = parse[:idx+1], parse[idx+1:]
 			if idx := strings.Index(parse, ":"); idx > 0 {
 				expr := parse[idx:]
 				_, err := regexp.Compile(expr)

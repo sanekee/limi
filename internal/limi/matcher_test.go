@@ -25,7 +25,7 @@ func TestSplit(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 1)
 
-		require.Equal(t, "label", res[0].Str)
+		require.Equal(t, "{label}", res[0].Str)
 		require.Equal(t, TypeLabel, res[0].Type)
 	})
 
@@ -36,9 +36,9 @@ func TestSplit(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 2)
 
-		require.Equal(t, "label1", res[0].Str)
+		require.Equal(t, "{label1}", res[0].Str)
 		require.Equal(t, TypeLabel, res[0].Type)
-		require.Equal(t, "label2", res[1].Str)
+		require.Equal(t, "{label2}", res[1].Str)
 		require.Equal(t, TypeLabel, res[1].Type)
 	})
 
@@ -51,7 +51,7 @@ func TestSplit(t *testing.T) {
 
 		require.Equal(t, "a string", res[0].Str)
 		require.Equal(t, TypeString, res[0].Type)
-		require.Equal(t, "and label", res[1].Str)
+		require.Equal(t, "{and label}", res[1].Str)
 		require.Equal(t, TypeLabel, res[1].Type)
 	})
 
@@ -70,7 +70,7 @@ func TestSplit(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 1)
 
-		require.Equal(t, "regexp:[\\d]+", res[0].Str)
+		require.Equal(t, "{regexp:[\\d]+}", res[0].Str)
 		require.Equal(t, TypeRegexp, res[0].Type)
 	})
 
@@ -81,9 +81,9 @@ func TestSplit(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, res, 2)
 
-		require.Equal(t, "regexp1:[a-z]+", res[0].Str)
+		require.Equal(t, "{regexp1:[a-z]+}", res[0].Str)
 		require.Equal(t, TypeRegexp, res[0].Type)
-		require.Equal(t, "regexp2:[0-9]+", res[1].Str)
+		require.Equal(t, "{regexp2:[0-9]+}", res[1].Str)
 		require.Equal(t, TypeRegexp, res[1].Type)
 	})
 
@@ -96,7 +96,7 @@ func TestSplit(t *testing.T) {
 
 		require.Equal(t, "a string", res[0].Str)
 		require.Equal(t, TypeString, res[0].Type)
-		require.Equal(t, "and regexp:[a-z]+", res[1].Str)
+		require.Equal(t, "{and regexp:[a-z]+}", res[1].Str)
 		require.Equal(t, TypeRegexp, res[1].Type)
 	})
 
@@ -109,9 +109,9 @@ func TestSplit(t *testing.T) {
 
 		require.Equal(t, "a string", res[0].Str)
 		require.Equal(t, TypeString, res[0].Type)
-		require.Equal(t, "and label", res[1].Str)
+		require.Equal(t, "{and label}", res[1].Str)
 		require.Equal(t, TypeLabel, res[1].Type)
-		require.Equal(t, "and regexp:[a-z]+", res[2].Str)
+		require.Equal(t, "{and regexp:[a-z]+}", res[2].Str)
 		require.Equal(t, TypeRegexp, res[2].Type)
 	})
 

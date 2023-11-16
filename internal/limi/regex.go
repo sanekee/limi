@@ -7,17 +7,19 @@ import (
 )
 
 type RegexpMatcher struct {
+	data   string
 	label  string
 	regexp *regexp.Regexp
 	trail  byte
 }
 
 func NewRegexpMatcher(str string) *RegexpMatcher {
-	strArr := strings.Split(str, ":")
+	labelStr := str[1 : len(str)-1]
+	strArr := strings.Split(labelStr, ":")
 	if len(strArr) != 2 {
 		panic("invalid regexp format")
 	}
-	return &RegexpMatcher{label: strArr[0], regexp: regexp.MustCompile(strArr[1])}
+	return &RegexpMatcher{data: str, label: strArr[0], regexp: regexp.MustCompile(strArr[1])}
 }
 
 func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string) {
@@ -44,19 +46,16 @@ func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string) {
 	return isMatched, trail
 }
 
-func (s *RegexpMatcher) Parse(str string) (bool, string, string, string) {
-	if len(str) < 3 ||
-		str[0] != '{' ||
-		str[len(str)-1] != '}' {
-		return false, "", str, "{" + s.label + ":" + s.regexp.String() + "}"
+func (s *RegexpMatcher) Parse(p Parser) (bool, string, string, string) {
+	if TypeRegexp != p.Type {
+		return false, "", p.Str, s.data
 	}
 
-	label := str[1 : len(str)-1]
-	if label == (s.label + ":" + s.regexp.String()) {
-		return true, str, "", ""
+	if p.Str != s.data {
+		return false, "", p.Str, s.data
 	}
 
-	return false, "", str, "{" + s.label + ":" + s.regexp.String() + "}"
+	return true, p.Str, "", ""
 }
 
 func (s *RegexpMatcher) Data() string {

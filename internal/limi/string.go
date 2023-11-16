@@ -34,7 +34,12 @@ func (s *StringMatcher) Match(ctx context.Context, str string) (bool, string) {
 
 }
 
-func (s *StringMatcher) Parse(str string) (bool, string, string, string) {
+func (s *StringMatcher) Parse(p Parser) (bool, string, string, string) {
+	if TypeString != p.Type {
+		return false, "", p.Str, s.data
+	}
+
+	str := p.Str
 	slen := min(len(str), len(s.data))
 	var matched []byte
 	for i := 0; i < slen; i++ {

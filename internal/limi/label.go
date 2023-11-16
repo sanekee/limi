@@ -5,12 +5,14 @@ import (
 )
 
 type LabelMatcher struct {
+	data  string
 	label string
 	trail byte
 }
 
 func NewLabelMatcher(str string) *LabelMatcher {
-	return &LabelMatcher{label: str}
+	label := str[1 : len(str)-1]
+	return &LabelMatcher{data: str, label: label}
 }
 
 func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
@@ -32,19 +34,17 @@ func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
 	return isMatched, trail
 }
 
-func (s *LabelMatcher) Parse(str string) (bool, string, string, string) {
-	if len(str) < 3 ||
-		str[0] != '{' ||
-		str[len(str)-1] != '}' {
-		return false, "", str, "{" + s.label + "}"
+func (s *LabelMatcher) Parse(p Parser) (bool, string, string, string) {
+	str := p.Str
+	if TypeLabel != p.Type {
+		return false, "", str, s.data
 	}
 
-	label := str[1 : len(str)-1]
-	if label == s.label {
-		return true, str, "", ""
+	if s.data != p.Str {
+		return false, "", str, s.data
 	}
 
-	return false, "", str, "{" + s.label + "}"
+	return true, str, "", ""
 }
 
 func (s *LabelMatcher) Data() string {

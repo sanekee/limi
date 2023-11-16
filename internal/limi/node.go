@@ -69,15 +69,18 @@ func (n *Node) Insert(str string, h Handle) error {
 	return nil
 }
 
+// insert p into current node,
+// returns
+//  1. nodes matches p or new node created
+//  2. remainder unmatched string
+//  3. parser error
 func insert(n *Node, p Parser) (*Node, string, error) {
 	if n.matcher == nil {
 		n.matcher = NewMatcher(p)
 		return n, "", nil
 	}
 
-	str := p.Str
 	if n.matcher.Type() != p.Type {
-		newNode := &Node{matcher: NewMatcher(p)}
 		// find existing node with the same matcher
 		for _, nn := range n.children {
 			if nn.matcher.Type() != p.Type {
@@ -91,34 +94,35 @@ func insert(n *Node, p Parser) (*Node, string, error) {
 				return node, "", nil
 			}
 		}
+		newNode := &Node{matcher: NewMatcher(p)}
 		n.children = append(n.children, newNode)
 		sort.Sort(n.children)
 		return newNode, "", nil
 	}
 
+	isMatched, matched, remStr, remNode := n.matcher.Parse(p)
+	if isMatched {
+		return n, "", nil
+	}
+
+	if len(matched) == 0 {
+		return nil, p.Str, nil
+	}
+
 	// string matcher will build trie with partial match
 	if p.Type == TypeString {
-		isMatched, matched, trailStr, trailNode := n.matcher.Parse(str)
-		if isMatched {
-			return n, "", nil
-		}
-
-		if len(matched) == 0 {
-			return nil, str, nil
-		}
-
-		// reparent current string's remainder
-		if trailNode != "" {
+		// reparent current node's  remainder
+		if remNode != "" {
 			children, handle := n.children, n.handle
 
 			n.matcher = NewStringMatcher(matched)
-			n.children = append([]*Node{}, &Node{children: children, handle: handle, matcher: NewStringMatcher(trailNode)})
+			n.children = append([]*Node{}, &Node{children: children, handle: handle, matcher: NewStringMatcher(remNode)})
 			n.handle = nil
 		}
 
-		// search new string's remainder
-		str = trailStr
-		if trailStr != "" {
+		// search for string's remainder
+		str := remStr
+		if remStr != "" {
 			for _, nn := range n.children {
 				if nn.matcher.Type() != p.Type {
 					continue
@@ -138,14 +142,10 @@ func insert(n *Node, p Parser) (*Node, string, error) {
 
 			return newNode, "", nil
 		}
+		return n, str, nil
 	}
 
-	// other matchers will have exact match
-	if n.matcher.Label() == p.Str {
-		return n, "", nil
-	}
-
-	return n, str, nil
+	return nil, p.Str, nil
 }
 
 func (n *Node) Walk(fn func(level int, str string, h any)) {
