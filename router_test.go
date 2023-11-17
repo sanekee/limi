@@ -1,6 +1,7 @@
 package limi
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/sanekee/limi/internal/testing/handler"
 	"github.com/sanekee/limi/internal/testing/handler/foo"
 	"github.com/sanekee/limi/internal/testing/require"
+	"github.com/sanekee/limi/middleware"
 )
 
 func TestBuildPath(t *testing.T) {
@@ -663,6 +665,59 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/foo/{id}/bar/index", string(body))
 	})
+
+	t.Run("add handler with params tag", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		get := func(w http.ResponseWriter, req *http.Request) {
+			params, err := GetParams(req.Context())
+			require.NoError(t, err)
+
+			actual, ok := params.(*testParams)
+			require.True(t, ok)
+
+			expected := testParams{
+				id:        168,
+				idx:       420,
+				operation: "new",
+			}
+			require.Equal(t, expected, *actual)
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("/foo/{id}/bar/{index}/var/{operation}"))
+		}
+
+		err = r.AddHandler(testHandlerWithParams{get: get})
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new", nil).
+			WithContext(context.Background())
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "/foo/{id}/bar/{index}/var/{operation}", string(body))
+	})
+}
+
+type testParams struct {
+	id        int    `limi:"param"`
+	idx       int    `limi:"param=index"`
+	operation string `limi:"param=operation"`
+}
+
+type testHandlerWithParams struct {
+	_   struct{}   `limi:"path=/foo/{id}/bar/{index}/var/{operation}"`
+	_   testParams `limi:"params"`
+	get http.HandlerFunc
+}
+
+func (t testHandlerWithParams) Get(w http.ResponseWriter, req *http.Request) {
+	t.get(w, req)
 }
 
 func TestAddRouter(t *testing.T) {
@@ -1144,6 +1199,46 @@ func TestAddHandlerFunc(t *testing.T) {
 		body, err := io.ReadAll(rec.Body)
 		require.NoError(t, err)
 		require.Equal(t, "foo", string(body))
+	})
+
+	t.Run("add handler with params tag middleware", func(t *testing.T) {
+		r, err := NewRouter("/")
+		require.NoError(t, err)
+
+		get := func(w http.ResponseWriter, req *http.Request) {
+			params, err := GetParams(req.Context())
+			require.NoError(t, err)
+
+			actual, ok := params.(*testParams)
+			require.True(t, ok)
+
+			expected := testParams{
+				id:        168,
+				idx:       420,
+				operation: "new",
+			}
+			require.Equal(t, expected, *actual)
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("/foo/{id}/bar/{index}/var/{operation}"))
+		}
+
+		setParamsMW, err := middleware.SetURLParamsData(testParams{})
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc("/foo/{id}/bar/{index}/var/{operation}", http.MethodGet, get, setParamsMW)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new", nil).
+			WithContext(context.Background())
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
+
+		body, err := io.ReadAll(rec.Body)
+		require.NoError(t, err)
+		require.Equal(t, "/foo/{id}/bar/{index}/var/{operation}", string(body))
 	})
 }
 

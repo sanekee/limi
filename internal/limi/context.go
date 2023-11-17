@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -17,6 +18,7 @@ type limiContext struct {
 	URLParams map[string]string
 
 	routingPath string
+	paramsType  reflect.Type
 }
 
 func NewContext(ctx context.Context) context.Context {
@@ -44,6 +46,7 @@ func ResetContext(ctx context.Context) {
 
 	lCtx.URLParams = make(map[string]string)
 	lCtx.routingPath = ""
+	lCtx.paramsType = nil
 }
 
 func GetURLParam(ctx context.Context, key string) string {
@@ -82,6 +85,10 @@ func SetRoutingPath(ctx context.Context, path string) {
 	lCtx.routingPath = path
 }
 
+type stringer interface {
+	FromString(str string) error
+}
+
 func ParseURLParam(ctx context.Context, key string, data any) error {
 	lCtx, ok := ctx.Value(limiContextKey).(*limiContext)
 	if !ok {
@@ -109,6 +116,35 @@ func ParseURLParam(ctx context.Context, key string, data any) error {
 		}
 	}
 	return fromString(value, vValue)
+}
+
+func ParseURLParams(ctx context.Context, data any) error {
+	vData := reflect.ValueOf(data)
+	if vData.Kind() != reflect.Pointer {
+		return fmt.Errorf("data must be a pointer")
+	}
+
+	vValue := reflect.Indirect(vData)
+	if vValue.Kind() != reflect.Struct {
+		return fmt.Errorf("data must be a struct")
+	}
+
+	for i := 0; i < vValue.NumField(); i++ {
+		tField := vValue.Type().Field(i)
+		vField := vValue.Field(i)
+
+		param := getParam(tField)
+		if param == "" {
+			continue
+		}
+
+		ptr := reflect.NewAt(vField.Type(), unsafe.Pointer(vField.UnsafeAddr()))
+		if err := ParseURLParam(ctx, param, ptr.Interface()); err != nil {
+			return fmt.Errorf("failed to parse param %s %w", param, err)
+		}
+	}
+	return nil
+
 }
 
 func fromString(str string, val reflect.Value) error {
@@ -152,6 +188,67 @@ func fromString(str string, val reflect.Value) error {
 	return nil
 }
 
-type stringer interface {
-	FromString(str string) error
+func getParam(field reflect.StructField) string {
+	limiTag := field.Tag.Get("limi")
+	if limiTag == "" {
+		return ""
+	}
+
+	strs := strings.Split(limiTag, "=")
+	if len(strs) < 1 ||
+		strs[0] != "param" {
+		return ""
+	}
+
+	if len(strs) == 1 {
+		return field.Name
+	}
+
+	return strs[1]
+}
+
+func SetParamsType(ctx context.Context, t reflect.Type) error {
+	lCtx, ok := ctx.Value(limiContextKey).(*limiContext)
+	if !ok {
+		return fmt.Errorf("invalid context")
+	}
+
+	lCtx.paramsType = t
+	return nil
+}
+
+func SetParamsData(ctx context.Context, data any) error {
+	lCtx, ok := ctx.Value(limiContextKey).(*limiContext)
+	if !ok {
+		return fmt.Errorf("invalid context")
+	}
+
+	v := reflect.ValueOf(data)
+	if v.Kind() == reflect.Pointer {
+		v = reflect.Indirect(v)
+	}
+
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("data must be a struct, %v", v.Kind())
+	}
+
+	lCtx.paramsType = v.Type()
+	return nil
+}
+
+func GetParams(ctx context.Context) (any, error) {
+	lCtx, ok := ctx.Value(limiContextKey).(*limiContext)
+	if !ok {
+		return nil, fmt.Errorf("invalid context")
+	}
+
+	if lCtx.paramsType == nil {
+		return nil, fmt.Errorf("unknown context params type")
+	}
+
+	v := reflect.New(lCtx.paramsType)
+	if err := ParseURLParams(ctx, v.Interface()); err != nil {
+		return nil, fmt.Errorf("failed to parse params %w", err)
+	}
+	return v.Interface(), nil
 }

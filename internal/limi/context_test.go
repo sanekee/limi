@@ -256,3 +256,73 @@ func (c *customStringer) FromString(str string) error {
 }
 
 type customStruct struct{}
+
+type testParams struct {
+	id        uint64 `limi:"param"`
+	index     int    `limi:"param=idx"`
+	slugPath  string `limi:"param=slug"`
+	Exported  string `limi:"param=exported"`
+	skipField string
+}
+
+func TestParseURLParams(t *testing.T) {
+	t.Run("parse", func(t *testing.T) {
+		ctx := NewContext(context.Background())
+
+		SetURLParam(ctx, "id", "168")
+		SetURLParam(ctx, "idx", "420")
+		SetURLParam(ctx, "slug", "my-path")
+		SetURLParam(ctx, "exported", "my-export")
+		SetURLParam(ctx, "skipField", "my-skip")
+
+		expected := testParams{
+			id:       168,
+			index:    420,
+			slugPath: "my-path",
+			Exported: "my-export",
+		}
+		var actual testParams
+		err := ParseURLParams(ctx, &actual)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("not pointer", func(t *testing.T) {
+		ctx := NewContext(context.Background())
+
+		var actual testParams
+		err := ParseURLParams(ctx, actual)
+		require.Error(t, err)
+	})
+
+	t.Run("not struct", func(t *testing.T) {
+		ctx := NewContext(context.Background())
+
+		var actual int
+		err := ParseURLParams(ctx, actual)
+		require.Error(t, err)
+	})
+
+	t.Run("params", func(t *testing.T) {
+		ctx := NewContext(context.Background())
+		SetParamsData(ctx, testParams{})
+
+		SetURLParam(ctx, "id", "168")
+		SetURLParam(ctx, "idx", "420")
+		SetURLParam(ctx, "slug", "my-path")
+		SetURLParam(ctx, "exported", "my-export")
+		SetURLParam(ctx, "skipField", "my-skip")
+
+		expected := testParams{
+			id:       168,
+			index:    420,
+			slugPath: "my-path",
+			Exported: "my-export",
+		}
+		params, err := GetParams(ctx)
+		require.NoError(t, err)
+		actual, ok := params.(*testParams)
+		require.True(t, ok)
+		require.Equal(t, expected, *actual)
+	})
+}

@@ -205,6 +205,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 	methods := httpMethodHandlers{
 		m:                       make(map[string]http.Handler),
 		methodNotAllowedHandler: r.methodNotAllowedHandler,
+		paramsType:              getParamsType(baseRT),
 	}
 
 	for i := 0; i < rt.NumMethod(); i++ {
@@ -506,7 +507,7 @@ func getPaths(t reflectTyper) []string {
 		return nil
 	}
 
-	pathStrs := splitEscape(strs[1], ',')
+	pathStrs := limi.SplitEscape(strs[1], ',')
 	var paths []string
 	for _, p := range pathStrs {
 		paths = append(paths, strings.TrimSpace(p))
@@ -556,6 +557,7 @@ func resolvePaths(t reflectTyper, handlerPath string) []string {
 type httpMethodHandlers struct {
 	m                       map[string]http.Handler
 	methodNotAllowedHandler func(...string) http.Handler
+	paramsType              reflect.Type
 }
 
 // keys returns a list of methods supported by the handler.
@@ -584,6 +586,10 @@ func (h httpMethodHandlers) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	if !ok {
 		h.methodNotAllowedHandler(h.keys()...).ServeHTTP(w, req)
 		return
+	}
+
+	if h.paramsType != nil {
+		limi.SetParamsType(req.Context(), h.paramsType)
 	}
 	hdl.ServeHTTP(w, req)
 }
@@ -668,31 +674,6 @@ func parseHost(str string) string {
 	return arr[0]
 }
 
-// splitEscape split string by deliminitor allowing escape character
-func splitEscape(str string, delim byte) []string {
-	var escape int
-	var splitted []string
-	var curStr []byte
-	for i := 0; i < len(str); i++ {
-		c := byte(str[i])
-		if c == '\\' && i-escape > 1 {
-			escape = i
-			continue
-		}
-		if c == delim && i-escape > 1 {
-			splitted = append(splitted, string(curStr))
-			curStr = []byte{}
-			continue
-		}
-
-		curStr = append(curStr, c)
-	}
-	if len(curStr) > 0 {
-		splitted = append(splitted, string(curStr))
-	}
-	return splitted
-}
-
 // hostHandler is a node Handle to match router's host
 type hostHandler struct{}
 
@@ -713,3 +694,20 @@ func (h hostHandler) IsMethodAllowed(string) bool {
 
 // ServeHTTP implements Node Handle interface, handles net/http server requests.
 func (h hostHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {}
+
+// getParamsType check if a struct type params is set in the field
+func getParamsType(t reflect.Type) reflect.Type {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		limiTag := field.Tag.Get("limi")
+		if limiTag == "" {
+			continue
+		}
+
+		if strings.Contains(limiTag, "params") &&
+			field.Type.Kind() == reflect.Struct {
+			return field.Type
+		}
+	}
+	return nil
+}
