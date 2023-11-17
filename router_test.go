@@ -1488,109 +1488,163 @@ func TestMiddleware(t *testing.T) {
 	})
 }
 
-func TestLookupTags(t *testing.T) {
-	type testSt struct {
-		testName string
-		input    reflect.StructTag
-		expected []string
-	}
-
-	tests := []testSt{
-		{
-			testName: "single",
-			input:    `path:"foo"`,
-			expected: []string{"foo"},
-		},
-		{
-			testName: "multiple",
-			input:    `path:"foo1" path:"foo2"`,
-			expected: []string{"foo1", "foo2"},
-		},
-		{
-			testName: "multiple with spaces",
-			input:    ` path:"foo1"   path:" foo2"    path:"foo3 "`,
-			expected: []string{"foo1", " foo2", "foo3 "},
-		},
-		{
-			testName: "multiple with spaces and quotes",
-			input:    ` path:"fo\"o1" path:"fo\"\"o2", path:\"foo\"`,
-			expected: []string{`fo"o1`, `fo""o2`},
-		},
-	}
-
-	t.Parallel()
-
-	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			actual := lookupTags(test.input, "path")
-			require.Equal(t, test.expected, actual)
-		})
-	}
+type testTyper struct {
+	pkgPath string
+	name    string
+	fields  []reflect.StructField
 }
 
-func TestBuildHandlerPath(t *testing.T) {
+func (t testTyper) PkgPath() string {
+	return t.pkgPath
+}
+func (t testTyper) Name() string {
+	return t.name
+}
+
+func (t testTyper) NumField() int {
+	return len(t.fields)
+}
+
+func (t testTyper) Field(i int) reflect.StructField {
+	if i >= len(t.fields) {
+		return reflect.StructField{}
+	}
+	return t.fields[i]
+}
+
+func TestResolvePaths(t *testing.T) {
 	type testSt struct {
-		testName   string
-		pkgPath    string
-		structName string
-		tag        reflect.StructTag
-		expected   []string
+		testName    string
+		handlerType testTyper
+		handlerPath string
+		expected    []string
 	}
 
 	tests := []testSt{
 		{
-			testName:   "package path + same struct name",
-			pkgPath:    "/pkg/handler/foo",
-			structName: "Foo",
-			expected:   []string{"/foo"},
+			testName: "package path + same struct name",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "Foo",
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo"},
 		},
 		{
-			testName:   "package path + different struct name",
-			pkgPath:    "/pkg/handler/foo",
-			structName: "FooBar",
-			expected:   []string{"/foo/foobar"},
+			testName: "package path + same struct name, different handler path",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "Foo",
+			},
+			handlerPath: "pkg",
+			expected:    []string{"/handler/foo"},
 		},
 		{
-			testName:   "package path + struct name + tag absolute path",
-			pkgPath:    "/pkg/hanler/foo",
-			structName: "FooBar",
-			tag:        `path:"/tagpath"`,
-			expected:   []string{"/tagpath"},
+			testName: "package path + different struct name",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "FooBar",
+			},
+
+			handlerPath: "handler",
+			expected:    []string{"/foo/foobar"},
 		},
 		{
-			testName:   "package path + struct name + tag relative path",
-			pkgPath:    "/pkg/handler/foo",
-			structName: "FooBar",
-			tag:        `path:"tagpath"`,
-			expected:   []string{"/foo/tagpath"},
+			testName: "package path + struct name + tag absolute path",
+			handlerType: testTyper{
+				pkgPath: "/pkg/hanler/foo",
+				name:    "FooBar",
+				fields: []reflect.StructField{
+					{
+						Tag: `limi:"path=/tagpath"`,
+					},
+				},
+			},
+			handlerPath: "handler",
+			expected:    []string{"/tagpath"},
 		},
 		{
-			testName:   "package path + struct name + multiple tag paths",
-			pkgPath:    "/pkg/handler/foo",
-			structName: "FooBar",
-			tag:        `path:"tagpath" path:"/absolutetag", path:"./"`,
-			expected:   []string{"/foo/tagpath", "/absolutetag", "/foo/"},
+			testName: "package path + struct name + tag relative path",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "FooBar",
+				fields: []reflect.StructField{
+					{
+						Tag: `limi:"path=tagpath"`,
+					},
+				},
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo/tagpath"},
 		},
 		{
-			testName:   "package path as root",
-			pkgPath:    "/pkg/handler",
-			structName: "Handler",
-			expected:   []string{"/"},
+			testName: "package path + struct name + multiple tag paths",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "FooBar",
+				fields: []reflect.StructField{
+					{
+						Tag: `limi:"path=tagpath,/absolutetag,./"`,
+					},
+				},
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo/tagpath", "/absolutetag", "/foo/"},
 		},
 		{
-			testName:   "package index as root",
-			pkgPath:    "/pkg/handler/foo",
-			structName: "Index",
-			expected:   []string{"/foo"},
+			testName: "package path + struct name + tag paths with spaces",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "FooBar",
+				fields: []reflect.StructField{
+					{
+						Tag: `limi:"path=tagpath , /absolutetag, ./ "`,
+					},
+				},
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo/tagpath", "/absolutetag", "/foo/"},
+		},
+		{
+			testName: "package path + struct name + tag paths with escape",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "FooBar",
+				fields: []reflect.StructField{
+					{
+						Tag: `limi:"path=tagpath\\,tagpath2, /absolutetag, ./ "`,
+					},
+				},
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo/tagpath,tagpath2", "/absolutetag", "/foo/"},
+		},
+		{
+			testName: "package path as root",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler",
+				name:    "Handler",
+			},
+			handlerPath: "handler",
+			expected:    []string{"/"},
+		},
+		{
+			testName: "package index as root",
+			handlerType: testTyper{
+				pkgPath: "/pkg/handler/foo",
+				name:    "Index",
+			},
+			handlerPath: "handler",
+			expected:    []string{"/foo"},
 		},
 	}
 
 	t.Parallel()
 
-	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			actual := buildHandlerPaths("handler", test.pkgPath, test.structName, test.tag)
-			require.Equal(t, test.expected, actual)
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			actual := resolvePaths(tt.handlerType, tt.handlerPath)
+			require.Equal(t, tt.expected, actual)
 		})
 	}
 }

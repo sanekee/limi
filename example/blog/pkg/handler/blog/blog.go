@@ -22,7 +22,7 @@ func (s Blog) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Author struct {
-	limi struct{} `path:"{storyId:[0-9]+}/author"` // custom relative path
+	_ struct{} `limi:"path={storyId:[0-9]+}/author"` // custom relative path
 }
 
 // Get handles HTTP GET request
@@ -45,7 +45,7 @@ func getAuthor(int) string {
 }
 
 type Copyright struct {
-	limi struct{} `path:"/copyright"` // custom absolute path
+	_ struct{} `limi:"path=/copyright"` // custom absolute path
 }
 
 // Get handles HTTP GET request

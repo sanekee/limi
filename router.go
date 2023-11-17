@@ -188,8 +188,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // Handler is any struct with http methods (i.e. `GET`, `POST`) as method.
 // Methods with http.HandlerFunc signature are automaticaly added as a HTTP method handler.
 // - Routing path is automatically discovered based on relative path to the router's `HandlerPath`.
-// - Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `limi struct{} `path:"/custom-path"` field in the Handler struct.
-// - Multiple paths can be added to handle multiple paths, e.g. `limi struct{} `path:"/story/cool-path" path:"/story/strange-path" path:"/best-path"`.
+// - Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `_ struct{} `limi:"path:/custom-path"` field in the Handler struct.
+// - Multiple paths can be added to handle multiple paths, e.g. `_ struct{} `limi:"path=/story/cool-path,/story/strange-path,/best-path"`.
 func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Handler) error {
 	rt := reflect.TypeOf(handler)
 	baseRT := rt
@@ -229,14 +229,7 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 		return nil
 	}
 
-	var tag reflect.StructTag
-	field, ok := baseRT.FieldByName("limi")
-	if ok {
-		tag = field.Tag
-	}
-
-	paths := buildHandlerPaths(r.handlerPath, baseRT.PkgPath(), baseRT.Name(), tag)
-	for _, path := range paths {
+	for _, path := range resolvePaths(baseRT, r.handlerPath) {
 		if err := r.insertMethodHandler(path, methods); err != nil {
 			return fmt.Errorf("failed to insert methods handler with path %s %w", path, err)
 		}
@@ -493,51 +486,48 @@ func methodNotAllowedHandler(allowedMethods ...string) http.Handler {
 	})
 }
 
-// lookupTags extends the stdlib StructTag lookup method to support multiple tags with the same key.
-func lookupTags(tag reflect.StructTag, key string) []string {
-	var arr []string
-	var values []string
-
-	var bs []byte
-	var opened bool
-	var escaped int
-	for i := 0; i < len(tag); i++ {
-		if tag[i] == '\\' && i-escaped > 1 {
-			escaped = i
-		}
-		if tag[i] == '"' && i-escaped > 1 {
-			opened = !opened
-		}
-		if tag[i] == ' ' {
-			if len(bs) > 0 && !opened {
-				arr = append(arr, string(bs))
-				bs = []byte{}
-				continue
-			}
-		}
-		if tag[i] == ' ' && !opened {
-			continue
-		}
-		bs = append(bs, tag[i])
-	}
-
-	if len(bs) > 0 {
-		arr = append(arr, string(bs))
-	}
-
-	for i := 0; i < len(arr); i++ {
-		t := reflect.StructTag(arr[i])
-		if v, ok := t.Lookup(key); ok {
-			values = append(values, v)
+// getPaths return multiple paths tag in str
+func getPaths(t reflectTyper) []string {
+	var limiTag string
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if limiTag = field.Tag.Get("limi"); limiTag != "" {
+			break
 		}
 	}
-	return values
+
+	if limiTag == "" {
+		return nil
+	}
+
+	strs := strings.Split(limiTag, "=")
+	if len(strs) != 2 ||
+		strings.TrimSpace(strs[0]) != "path" {
+		return nil
+	}
+
+	pathStrs := splitEscape(strs[1], ',')
+	var paths []string
+	for _, p := range pathStrs {
+		paths = append(paths, strings.TrimSpace(p))
+	}
+
+	return paths
 }
 
-// buildHandlerPaths build list of paths with package path, the struct name and struct tag for router.
-func buildHandlerPaths(handlerPath, pkgPath, structName string, structTag reflect.StructTag) []string {
+type reflectTyper interface {
+	Name() string
+	PkgPath() string
+	Field(int) reflect.StructField
+	NumField() int
+}
 
-	paths := lookupTags(structTag, "path")
+// resolvePaths build paths from a struct type with PkgPath, struct name and struct tag
+func resolvePaths(t reflectTyper, handlerPath string) []string {
+	pkgPath := t.PkgPath()
+	structName := t.Name()
+
+	paths := getPaths(t)
 	structName = strings.ToLower(structName)
 	pkgName := packageName(pkgPath)
 	trimmedPkgPath := removeTraillingSlash(findHandlerPath(handlerPath, pkgPath))
@@ -676,6 +666,31 @@ func parseHost(str string) string {
 	}
 
 	return arr[0]
+}
+
+// splitEscape split string by deliminitor allowing escape character
+func splitEscape(str string, delim byte) []string {
+	var escape int
+	var splitted []string
+	var curStr []byte
+	for i := 0; i < len(str); i++ {
+		c := byte(str[i])
+		if c == '\\' && i-escape > 1 {
+			escape = i
+			continue
+		}
+		if c == delim && i-escape > 1 {
+			splitted = append(splitted, string(curStr))
+			curStr = []byte{}
+			continue
+		}
+
+		curStr = append(curStr, c)
+	}
+	if len(curStr) > 0 {
+		splitted = append(splitted, string(curStr))
+	}
+	return splitted
 }
 
 // hostHandler is a node Handle to match router's host

@@ -70,7 +70,7 @@ func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Merchant struct {
-	limi     struct{} `path:"{id}"` //lint:ignore U1000 field parsed by limi
+	_        struct{} `limi:"path={id}"`
 	DBClient DBClient
 }
 

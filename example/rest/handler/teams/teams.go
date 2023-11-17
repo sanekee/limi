@@ -71,7 +71,7 @@ func (t Teams) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Team struct {
-	limi     struct{} `path:"/teams/{id:[0-9]+}"` //lint:ignore U1000 field parsed by limi
+	_        struct{} `limi:"path=/teams/{id:[0-9]+}"`
 	DBClient DBClient
 }
 
@@ -151,7 +151,7 @@ func (t Team) Delete(w http.ResponseWriter, req *http.Request) {
 }
 
 type TeamMerchants struct {
-	limi     struct{} `path:"/teams/{id:[0-9]+}/merchants"` //lint:ignore U1000 field parsed by limi
+	_        struct{} `limi:"path=/teams/{id:[0-9]+}/merchants"`
 	DBClient DBClient
 }
 

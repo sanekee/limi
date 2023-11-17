@@ -20,7 +20,7 @@ func (f Foo) Get() http.HandlerFunc {
 }
 
 type FooDef struct {
-	limi struct{} `path:"/foo"` //lint:ignore U1000 field parsed by limi
+	_ struct{} `limi:"path=/foo"`
 }
 
 func (f FooDef) Get() http.HandlerFunc {
@@ -41,7 +41,7 @@ func (f *FooPtr) Get() http.HandlerFunc {
 }
 
 type FooRel struct {
-	limi struct{} `path:"bar"` //lint:ignore U1000 field parsed by limi
+	_ struct{} `limi:"path=bar"`
 }
 
 func (f FooRel) Get() http.HandlerFunc {
@@ -91,7 +91,7 @@ func (f FooMulti) Post() http.HandlerFunc {
 }
 
 type FooSlash struct {
-	limi struct{} `path:"./"` //lint:ignore U1000 field parsed by limi
+	_ struct{} `limi:"path=./"`
 }
 
 func (f FooSlash) Get() http.HandlerFunc {
@@ -99,7 +99,7 @@ func (f FooSlash) Get() http.HandlerFunc {
 }
 
 type FooPaths struct {
-	limi struct{} `path:"foo1" path:"foo2"` //nolint:staticcheck,unuseud
+	_ struct{} `limi:"path=foo1,foo2"`
 }
 
 func (f FooPaths) Get() http.HandlerFunc {

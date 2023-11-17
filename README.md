@@ -97,7 +97,7 @@ if err != nil {
 
 | Method | Type | Description |
 | --- | --- | --- |
-| AddHandler | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `limi struct{} `path:"/custom-path"` field in the Handler struct.<br>- Multiple paths can be added to handle multiple paths, e.g. `limi struct{} `path:"/story/cool-path" path:"/story/strange-path" path:"/best-path"` |
+| AddHandler | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `_ struct{} `limi:"path=/custom-path"` field in the Handler struct.<br>- Multiple paths can be added to handle multiple paths, e.g. `_ struct{} `limi:"path=/story/cool-path,/story/strange-path,/best-path"` |
 | AddHandlerFunc | http.HandlerFunc | `http.HandlerFunc` is `net/http` handler function. |
 | AddHTTPHandler | http.Handler | `http.Handler` is `net/http` handler with `ServeHTTP` method, using this as a catch all handler. |
 
@@ -150,21 +150,21 @@ type Bar struct{}          // path => /foo/bar
 package handler
 
 type Foo struct{
-    limit struct{} `path="./"`                // path => /                 // ./ is added as index handler
+    _ struct{} `limi:"path=./"`                // path => /                 // ./ is added as index handler
 }          
 
 // package /pkg/handler/foo
 package handler
 
 type Bar struct{
-    limit struct{} `path="foo"`                // path => /foo/foo         // relative path to the package
+    _ struct{} `limi:"path=foo"`                // path => /foo/foo         // relative path to the package
 }          
 
 // package /pkg/handler/foo
 package handler
 
 type HandleByID struct{
-    limit struct{} `path="{id:[0-9]+}"`        // path => /foo/{id:[0-9]+} // relative regexp path to the package
+    _ struct{} `limi:"path={id:[0-9]+}"`        // path => /foo/{id:[0-9]+} // relative regexp path to the package
 }          
 
 
@@ -172,21 +172,21 @@ type HandleByID struct{
 package handler
 
 type Bar struct{
-    limit struct{} `path="/"`                 // path => /                 // absolute path
+    _ struct{} `limi:"path=/"`                 // path => /                 // absolute path
 }          
 
 // package /pkg/handler/foo
 package handler
 
 type Bar struct{
-    limit struct{} `path="/tar/bar/zar"`     // path => /tar/bar/zar       // absolute path #2
+    _ struct{} `limi:"path=/tar/bar/zar"`     // path => /tar/bar/zar       // absolute path #2
 }          
 
 // package /pkg/handler/foo
 package handler
 
 type Bar struct{
-    limit struct{} `path="/user/{id}/story/{slug:.*}"`  // path => /foo/{id}/bar/{slug:.*}
+    _ struct{} `limi:"path=/user/{id}/story/{slug:.*}"`  // path => /foo/{id}/bar/{slug:.*}
                                                         // absolute path with a label matcher {id} and a regexp matcher {slug:.*}       
 }          
 ```
@@ -198,7 +198,7 @@ type Bar struct{
 package handler
 
 type Foo struct{
-    limit struct{} `path="./" path="/good/foo" path="/bad/foo`  // path => /, /good/foo, /bad/foo
+    _ struct{} `limi:"path=./,/good/foo,/bad/foo`  // path => /, /good/foo, /bad/foo
 }          
 ```
 
@@ -227,7 +227,7 @@ func (s Blog) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Author struct {
-    limi struct{} `path:"{storyId:[0-9]+}/author"` // custom relative path
+    _ struct{} `limi:"path={storyId:[0-9]+}/author"` // custom relative path
 }
 
 // Get handles HTTP GET request
@@ -246,7 +246,7 @@ func (s Author) Get(w http.ResponseWriter, req *http.Request) {
 }
 
 type Copyright struct {
-    limi struct{} `path:"/copyright"` // custom absolute path
+    _ struct{} `limi:"path=/copyright"` // custom absolute path
 }
 
 // Get handles HTTP GET request
