@@ -1,7 +1,6 @@
 package limi
 
 import (
-	"context"
 	"regexp"
 	"strings"
 )
@@ -22,7 +21,7 @@ func NewRegexpMatcher(str string) *RegexpMatcher {
 	return &RegexpMatcher{data: str, label: strArr[0], regexp: regexp.MustCompile(strArr[1])}
 }
 
-func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string) {
+func (s *RegexpMatcher) Match(str string) (bool, string, string) {
 	var testStr []byte
 
 	if s.trail == 0 {
@@ -40,10 +39,7 @@ func (s *RegexpMatcher) Match(ctx context.Context, str string) (bool, string) {
 	isMatched := len(matched) != 0
 	trail := str[len(matched):]
 
-	if len(matched) > 0 {
-		SetURLParam(ctx, s.label, string(matched))
-	}
-	return isMatched, trail
+	return isMatched, string(matched), trail
 }
 
 func (s *RegexpMatcher) Parse(p Parser) (bool, string, string, string) {

@@ -1,7 +1,6 @@
 package limi
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -18,7 +17,7 @@ const (
 
 type Matcher interface {
 	Parse(Parser) (bool, string, string, string)
-	Match(context.Context, string) (bool, string)
+	Match(string) (bool, string, string)
 	Type() MatcherType
 	Data() string
 	Label() string

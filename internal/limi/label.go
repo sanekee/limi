@@ -1,9 +1,5 @@
 package limi
 
-import (
-	"context"
-)
-
 type LabelMatcher struct {
 	data  string
 	label string
@@ -15,7 +11,7 @@ func NewLabelMatcher(str string) *LabelMatcher {
 	return &LabelMatcher{data: str, label: label}
 }
 
-func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
+func (s *LabelMatcher) Match(str string) (bool, string, string) {
 	var matched []byte
 	for _, b := range str {
 		if s.trail != 0 &&
@@ -28,10 +24,7 @@ func (s *LabelMatcher) Match(ctx context.Context, str string) (bool, string) {
 	isMatched := len(matched) != 0
 	trail := str[len(matched):]
 
-	if len(matched) > 0 {
-		SetURLParam(ctx, s.label, string(matched))
-	}
-	return isMatched, trail
+	return isMatched, string(matched), trail
 }
 
 func (s *LabelMatcher) Parse(p Parser) (bool, string, string, string) {

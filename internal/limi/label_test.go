@@ -1,7 +1,6 @@
 package limi
 
 import (
-	"context"
 	"testing"
 
 	"github.com/sanekee/limi/internal/testing/require"
@@ -70,35 +69,30 @@ func TestLabelParse(t *testing.T) {
 
 func TestLabelMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
-		ctx := context.Background()
-
 		s := NewLabelMatcher("{foo}")
 
-		isMatched, trail1 := s.Match(ctx, "foo")
+		isMatched, matched, trail1 := s.Match("foo")
 		require.True(t, isMatched)
 		require.Empty(t, trail1)
+		require.Equal(t, "foo", matched)
 	})
 
 	t.Run("match - consumed all", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewLabelMatcher("{foo}")
 
-		isMatched, trail1 := s.Match(ctx, "foobar")
+		isMatched, matched, trail1 := s.Match("foobar")
 		require.True(t, isMatched)
 		require.Empty(t, trail1)
-		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foobar", matched)
 	})
 
 	t.Run("match - consumed with trail", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewLabelMatcher("{foo}")
 		s.SetTrail('b')
 
-		isMatched, trail1 := s.Match(ctx, "foobar")
+		isMatched, matched, trail1 := s.Match("foobar")
 		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
-		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foo", matched)
 	})
 }

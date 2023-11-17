@@ -1,7 +1,6 @@
 package limi
 
 import (
-	"context"
 	"testing"
 
 	"github.com/sanekee/limi/internal/testing/require"
@@ -57,42 +56,38 @@ func TestStringParse(t *testing.T) {
 
 func TestStringMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
-		ctx := context.Background()
-
 		s := NewStringMatcher("foo")
 
-		isMatched, trail1 := s.Match(ctx, "foo")
+		isMatched, matched, trail1 := s.Match("foo")
 		require.True(t, isMatched)
 		require.Empty(t, trail1)
+		require.Equal(t, "foo", matched)
 	})
 
 	t.Run("match - partial matched", func(t *testing.T) {
-		ctx := context.Background()
-
 		s := NewStringMatcher("foo")
 
-		isMatched, trail1 := s.Match(ctx, "foobar")
+		isMatched, matched, trail1 := s.Match("foobar")
 		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
+		require.Equal(t, "foo", matched)
 	})
 
 	t.Run("match - data partial matched", func(t *testing.T) {
-		ctx := context.Background()
-
 		s := NewStringMatcher("foobar")
 
-		isMatched, trail1 := s.Match(ctx, "foo")
+		isMatched, matched, trail1 := s.Match("foo")
 		require.False(t, isMatched)
 		require.Equal(t, "foo", trail1)
+		require.Empty(t, matched)
 	})
 
 	t.Run("match - data input partial matched", func(t *testing.T) {
-		ctx := context.Background()
-
 		s := NewStringMatcher("foobaz")
 
-		isMatched, trail1 := s.Match(ctx, "footar")
+		isMatched, matched, trail1 := s.Match("footar")
 		require.False(t, isMatched)
 		require.Equal(t, "footar", trail1)
+		require.Empty(t, matched)
 	})
 }

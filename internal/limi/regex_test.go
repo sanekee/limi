@@ -1,7 +1,6 @@
 package limi
 
 import (
-	"context"
 	"testing"
 
 	"github.com/sanekee/limi/internal/testing/require"
@@ -63,47 +62,39 @@ func TestRegexpParse(t *testing.T) {
 
 func TestRegexpMatch(t *testing.T) {
 	t.Run("match - exact matched", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewRegexpMatcher("{foo:.*}")
 
-		isMatched, trail1 := s.Match(ctx, "foo")
+		isMatched, matched, trail1 := s.Match("foo")
 		require.True(t, isMatched)
 		require.Empty(t, trail1)
-		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foo", matched)
 	})
 
 	t.Run("match - consumed all", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewRegexpMatcher("{foo:.*}")
 
-		isMatched, trail1 := s.Match(ctx, "foobar")
+		isMatched, matched, trail1 := s.Match("foobar")
 		require.True(t, isMatched)
 		require.Empty(t, trail1)
-		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foobar", matched)
 	})
 
 	t.Run("match - consumed with trail", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewRegexpMatcher("{foo:.*}")
 		s.SetTrail('b')
 
-		isMatched, trail1 := s.Match(ctx, "foobar")
+		isMatched, matched, trail1 := s.Match("foobar")
 		require.True(t, isMatched)
 		require.Equal(t, "bar", trail1)
-		require.Equal(t, "foo", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foo", matched)
 	})
 
 	t.Run("match - consumed with pattern", func(t *testing.T) {
-		ctx := NewContext(context.Background())
-
 		s := NewRegexpMatcher("{foo:[a-z]+}")
 
-		isMatched, trail1 := s.Match(ctx, "foobar012345")
+		isMatched, matched, trail1 := s.Match("foobar012345")
 		require.True(t, isMatched)
 		require.Equal(t, "012345", trail1)
-		require.Equal(t, "foobar", GetURLParam(ctx, "foo"))
+		require.Equal(t, "foobar", matched)
 	})
 }

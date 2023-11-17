@@ -176,7 +176,12 @@ func lookup(ctx context.Context, n *Node, str string) (Handle, string) {
 		return nil, str
 	}
 
-	isMatched, trail := n.matcher.Match(ctx, str)
+	isMatched, matched, trail := n.matcher.Match(str)
+
+	if isMatched &&
+		n.matcher.Label() != "" && len(matched) > 0 {
+		SetURLParam(ctx, n.matcher.Label(), string(matched))
+	}
 	// fully matched
 	if isMatched && trail == "" && n.handle != nil {
 		return n.handle, trail
