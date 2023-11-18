@@ -2,23 +2,38 @@
 
 Limi is a lightweight go http router. The goal of the project is to make writing REST application easier with composable middlewares and idiomatic handler interface.
 
+## Table of Contents
+
+- [Features](#features)
+- [Components](#components)
+- [Usage](#usage)
+  - [Setup](#setup)
+  - [Router](#router)
+  - [Handlers](#handlers)
+  - [Middlewares](#middlewares)
+  - [Mux](#mux)
+- [Pattern Matching](#pattern-matching)
+- [URL Parameters Binding](#url-parameters-binding)
+
 ## Features
 
 - Lightweight with only go standard library dependencies.
-- Idiomatic handler, handler's path is automaitically discovered based on its package path.
+- Idiomatic handler, automatic handler's path discovery, reflection based url params binding.
 - Similar syntax for host and path matching.
 - Cascading middlewares support at router, subrouter and handler level.
 
 ## Components
 
-| Name | Description |
-| --- | --- |
-| Router | Router is the core of limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. limi Router is fully compatible with `net/http`. |
-| Handler | Handler is the function that handle the http request, limi Handler is fully compaitble with `net/http` `http.Handler`. |
-| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. Limi middlewares are compaible with generic middlewares used in other http routers such as `go-chi`, `gorilla-mux`. |
-| Mux | Mux is a router multiplexer, mux is used to serve single HTTP listener with multiple routers. Requests are handled by the order the routers were added. |
+| Name       | Description                                                     |
+| ----       | --------------------------------------------------------------- |
+| Router     | Router is the core of limi, a router handles http request with customizable `host` and `path`. Both `host` and `path` a match with a Radix Tree with custom matchers to provide *O(k)* time complexity lookup. limi Router is fully compatible with `net/http`.            |
+| Handler    | Handler is the function that handle the http request, limi Handler is fully compaitble with `net/http` `http.Handler`.                                                |
+| Middleware | Middlewares are chainable functions injected in router or handler lever to customize the handler functionality. Limi middlewares are compaible with generic middlewares used in other http routers such as `go-chi`, `gorilla-mux`.                                               |
+| Mux        | Mux is a router multiplexer, mux is used to serve single HTTP listener with multiple routers. Requests are handled by the order the routers were added.             |
 
 ## Usage
+
+### Setup
 
 Import limi in your project.
 
@@ -32,14 +47,14 @@ Adding a router.
 
 #### Router Options
 
-| Option Function | Description |
-| --- | --- |
-| WithHosts | Create router with `host` matching. Supports multiple hosts with common pattern matching. |
-| WithMiddlewares | Attach middlewares to router. |
-| WithNotFoundHandler | Set `not found`` handler. |
-| WithMethodNotAllowedHandler| Set the `method not allowed` handler. |
-| WithProfiler | Attach golang profiler to router at `/debug/pprof/`. |
-| WithHandlerPath | Set the base path for Handler, default is `handler`. |
+| Option Function            | Description                                                |
+| -------------------------- | ---------------------------------------------------------- |
+| WithHosts                  | Create router with `host` matching. Supports multiple hosts with common pattern matching. |
+| WithMiddlewares            | Attach middlewares to router.                              |
+| WithNotFoundHandler        | Set `not found`` handler.                                  |
+| WithMethodNotAllowedHandler| Set the `method not allowed` handler.                      |
+| WithProfiler               | Attach golang profiler to router at `/debug/pprof/`.       |
+| WithHandlerPath            | Set the base path for Handler, default is `handler`.       |
 
 #### Examples
 
@@ -95,11 +110,11 @@ if err != nil {
 
 #### Adding Handlers
 
-| Method | Type | Description |
-| --- | --- | --- |
-| AddHandler | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. `_ struct{} `limi:"path=/custom-path"` field in the Handler struct.<br>- Multiple paths can be added to handle multiple paths, e.g. `_ struct{} `limi:"path=/story/cool-path,/story/strange-path,/best-path"` |
+| Method         | Type             | Description                              |
+| -------------- | ---------------- | ---------------------------------------- |
+| AddHandler     | Handler | Handler is any struct with http methods (i.e. `GET`, `POST`) as method.<br>- Methods with http.HandlerFunc signature are automaticaly added as method handler.<br>- Routing path is automatically discovered based on relative path to the router's `HandlerPath`.<br>- Custom routing path (*absolute* or *relative*) can be set using a struct tag, e.g. *_ struct{} \`limi:"path=/custom-path"\`*<br>- Multiple paths can be added to handle multiple paths, e.g. *_ struct{} \`limi:"path=/story/cool-path,/story/strange-path,/best-path"\`*<br>- URL Params binding with custom params struct, e.g. *_ commentParams{} \`limi:"path=/author/{id}/story/{slug}/comments/{commendId}"\`* |
 | AddHandlerFunc | http.HandlerFunc | `http.HandlerFunc` is `net/http` handler function. |
-| AddHTTPHandler | http.Handler | `http.Handler` is `net/http` handler with `ServeHTTP` method, using this as a catch all handler. |
+| AddHTTPHandler | http.Handler | `http.Handler` is `net/http` handler with `ServeHTTP` method, using this as a catch all handler.                                                   |
 
 #### Path Discovery
 
@@ -198,7 +213,7 @@ type Bar struct{
 package handler
 
 type Foo struct{
-    _ struct{} `limi:"path=./,/good/foo,/bad/foo`  // path => /, /good/foo, /bad/foo
+    _ struct{} `limi:"path=./,/good/foo,/bad/foo"`  // path => /, /good/foo, /bad/foo
 }          
 ```
 
@@ -227,20 +242,24 @@ func (s Blog) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Author struct {
-    _ struct{} `limi:"path={storyId:[0-9]+}/author"` // custom relative path
+    _ authorParams `limi:"path={storyId:[0-9]+}/author"` // custom relative path
 }
+
+type authorParams struct {
+    storyID int `limi:"param=storyId"`
+}
+
 
 // Get handles HTTP GET request
 func (s Author) Get(w http.ResponseWriter, req *http.Request) {
-    idStr := limi.GetURLParam(req.Context(), "storyId")
-    id, err := strconv.Atoi(idStr)
+    params, err := limi.GetParams[authorParams](req.Context())
     if err != nil {
         w.WriteHeader(http.StatusInternalServerError)
         return
     }
 
     // retrieve author and response
-    author := getAuthor(id)
+    author := getAuthor(params.storyID)
     w.WriteHeader(http.StatusOK)
     w.Write([]byte("The auther is " + author))
 }
@@ -388,7 +407,7 @@ if err := http.ListenAndServe(":3333", m); err != nil {
 }
 ```
 
-### Pattern Matching
+## Pattern Matching
 
 Pattern matcher is an internal component in limi router. It's used in conjuction of the Radix Tree to lookup a `host` or `path` to find the right handler.
 
@@ -415,4 +434,93 @@ r.AddHandlerFunc("/blog/top" ..              // matches the path /blog/top
 r.AddHandlerFunc("/blog/{id:[0-9]+}" ..      // matches paths /blog/1, /blog/2 ..., sets URLParams["id"] = <value>
 
 r.AddHandlerFunc("/blog/{slug}" ..           // matches paths /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
+```
+
+## URL Parameters Binding
+
+Limi supports binding custom struct with common data types or custom `stringer` types.
+
+```golang
+type stringer interface {
+    FromString(string) error
+}
+```
+
+To bind a struct to a handler with URL parameters,
+
+1. Declare a limi tagged field in the handler with a parameters struct.
+
+### Example
+
+```golang
+type CommentsHandler struct {
+    _ commentParams `limi:"path=/author/{id}/blog/{slug}/comment/{commentId}`
+}
+
+type commentParams struct {
+    id int `limi:"param"`                       // url param is the same as field name = {id}
+    blog string `limi:"param=slug"`             // url param is {slug}
+    commentID myuuid `limi:"param=commentId"`   // url param is a custom type myuuid {commentId}
+}
+
+type myuuid string
+
+func (m *myuuid) FromString(val string) error {
+    *m = val
+    return nil
+}
+
+func (c CommentHandler) Get(w http.ResponseWriter, req *http.Request) {
+    params, err := limi.GetParams[commentParams](req.Context())
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    
+    fmt.Println(params)
+}
+```
+
+2. Using SetURLParamsData middleware.
+
+#### Example
+
+```golang
+r, _ := limi.NewRouter("/") // a new router processing request on /
+
+urlparams,err := SetURLParamsData(commentParams{})
+if err != nil {
+    panic(err)
+}
+
+if err := r.AddHandlerFunc("/author/{id}/blog/{slug}/comment/{commentId}", 
+    http.MethodGet,
+    GetComment,
+    urlparams,
+); err != nil {
+    panic(err)
+}
+
+type commentParams struct {
+    id int `limi:"param"`                       // url param is the same as field name = {id}
+    blog string `limi:"param=slug"`             // url param is {slug}
+    commentID myuuid `limi:"param=commentId"`   // url param is a custom type myuuid {commentId}
+}
+
+type myuuid string
+
+func (m *myuuid) FromString(val string) error {
+    *m = val
+    return nil
+}
+
+func GetComment(w http.ResponseWriter, req *http.Request) {
+    params, err := limi.GetParams[commentParams]()
+    if err != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    
+    fmt.Println(params)
+}
 ```

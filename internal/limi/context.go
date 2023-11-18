@@ -250,5 +250,5 @@ func GetParams(ctx context.Context) (any, error) {
 	if err := ParseURLParams(ctx, v.Interface()); err != nil {
 		return nil, fmt.Errorf("failed to parse params %w", err)
 	}
-	return v.Interface(), nil
+	return reflect.Indirect(v).Interface(), nil
 }

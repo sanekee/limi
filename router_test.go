@@ -671,18 +671,15 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		get := func(w http.ResponseWriter, req *http.Request) {
-			params, err := GetParams(req.Context())
+			actual, err := GetParams[testParams](req.Context())
 			require.NoError(t, err)
-
-			actual, ok := params.(*testParams)
-			require.True(t, ok)
 
 			expected := testParams{
 				id:        168,
 				idx:       420,
 				operation: "new",
 			}
-			require.Equal(t, expected, *actual)
+			require.Equal(t, expected, actual)
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("/foo/{id}/bar/{index}/var/{operation}"))
@@ -711,8 +708,7 @@ type testParams struct {
 }
 
 type testHandlerWithParams struct {
-	_   struct{}   `limi:"path=/foo/{id}/bar/{index}/var/{operation}"`
-	_   testParams `limi:"params"`
+	_   testParams `limi:"path=/foo/{id}/bar/{index}/var/{operation}"`
 	get http.HandlerFunc
 }
 
@@ -1206,27 +1202,24 @@ func TestAddHandlerFunc(t *testing.T) {
 		require.NoError(t, err)
 
 		get := func(w http.ResponseWriter, req *http.Request) {
-			params, err := GetParams(req.Context())
+			actual, err := GetParams[testParams](req.Context())
 			require.NoError(t, err)
-
-			actual, ok := params.(*testParams)
-			require.True(t, ok)
 
 			expected := testParams{
 				id:        168,
 				idx:       420,
 				operation: "new",
 			}
-			require.Equal(t, expected, *actual)
+			require.Equal(t, expected, actual)
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("/foo/{id}/bar/{index}/var/{operation}"))
 		}
 
-		setParamsMW, err := middleware.SetURLParamsData(testParams{})
+		setParams, err := middleware.SetURLParamsData(testParams{})
 		require.NoError(t, err)
 
-		err = r.AddHandlerFunc("/foo/{id}/bar/{index}/var/{operation}", http.MethodGet, get, setParamsMW)
+		err = r.AddHandlerFunc("/foo/{id}/bar/{index}/var/{operation}", http.MethodGet, get, setParams)
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()

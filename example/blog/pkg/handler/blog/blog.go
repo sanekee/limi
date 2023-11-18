@@ -2,7 +2,6 @@ package blog
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/sanekee/limi"
 )
@@ -22,20 +21,23 @@ func (s Blog) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Author struct {
-	_ struct{} `limi:"path={storyId:[0-9]+}/author"` // custom relative path
+	_ authorParams `limi:"path={storyId:[0-9]+}/author"` // custom relative path
+}
+
+type authorParams struct {
+	storyID int `limi:"param=storyId"`
 }
 
 // Get handles HTTP GET request
 func (s Author) Get(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "storyId")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[authorParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// retrieve author and response
-	author := getAuthor(id)
+	author := getAuthor(params.storyID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("The auther is " + author)) // nolint:errcheck
 }

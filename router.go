@@ -704,10 +704,23 @@ func getParamsType(t reflect.Type) reflect.Type {
 			continue
 		}
 
-		if strings.Contains(limiTag, "params") &&
-			field.Type.Kind() == reflect.Struct {
-			return field.Type
+		if field.Type.Kind() != reflect.Struct {
+			continue
+		}
+
+		ft := field.Type
+		for j := 0; j < ft.NumField(); j++ {
+			ftField := ft.Field(j)
+			limiTag := ftField.Tag.Get("limi")
+			if limiTag == "" {
+				continue
+			}
+
+			if strings.Contains(limiTag, "param") {
+				return field.Type
+			}
 		}
 	}
+
 	return nil
 }

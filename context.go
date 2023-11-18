@@ -2,6 +2,7 @@ package limi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sanekee/limi/internal/limi"
 )
@@ -22,6 +23,16 @@ func SetParamsData(ctx context.Context, data any) error {
 }
 
 // GetParams get context params parsed from URL
-func GetParams(ctx context.Context) (any, error) {
-	return limi.GetParams(ctx)
+func GetParams[T any](ctx context.Context) (T, error) {
+	var ret T
+	data, err := limi.GetParams(ctx)
+	if err != nil {
+		return ret, err
+	}
+
+	ret, ok := data.(T)
+	if !ok {
+		return ret, fmt.Errorf("failed to convert params type")
+	}
+	return ret, nil
 }
