@@ -165,6 +165,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			r.notFoundHandler.ServeHTTP(w, req)
 		}
 		path = req.URL.Path
+
+		limi.SetQueries(ctx, req.URL.Query())
+
 	} else {
 		path = limi.GetRoutingPath(ctx)
 	}
@@ -716,7 +719,8 @@ func getParamsType(t reflect.Type) reflect.Type {
 				continue
 			}
 
-			if strings.Contains(limiTag, "param") {
+			if strings.Contains(limiTag, "param") ||
+				strings.Contains(limiTag, "query") {
 				return field.Type
 			}
 		}

@@ -678,6 +678,8 @@ func TestAddHandler(t *testing.T) {
 				id:        168,
 				idx:       420,
 				operation: "new",
+				offset:    6,
+				size:      9,
 			}
 			require.Equal(t, expected, actual)
 
@@ -689,7 +691,7 @@ func TestAddHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new", nil).
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new?offset=6&size=9", nil).
 			WithContext(context.Background())
 
 		r.ServeHTTP(rec, req)
@@ -705,6 +707,8 @@ type testParams struct {
 	id        int    `limi:"param"`
 	idx       int    `limi:"param=index"`
 	operation string `limi:"param=operation"`
+	offset    int    `limi:"query=offset"`
+	size      int    `limi:"query"`
 }
 
 type testHandlerWithParams struct {
@@ -1209,6 +1213,8 @@ func TestAddHandlerFunc(t *testing.T) {
 				id:        168,
 				idx:       420,
 				operation: "new",
+				offset:    6,
+				size:      9,
 			}
 			require.Equal(t, expected, actual)
 
@@ -1223,7 +1229,7 @@ func TestAddHandlerFunc(t *testing.T) {
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new", nil).
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/foo/168/bar/420/var/new?offset=6&size=9", nil).
 			WithContext(context.Background())
 
 		r.ServeHTTP(rec, req)

@@ -13,12 +13,12 @@ Limi is a lightweight go http router. The goal of the project is to make writing
   - [Middlewares](#middlewares)
   - [Mux](#mux)
 - [Pattern Matching](#pattern-matching)
-- [URL Parameters Binding](#url-parameters-binding)
+- [URL Parameters and Queries Binding](#url-parameters-and-queries-binding)
 
 ## Features
 
-- Lightweight with only go standard library dependencies.
-- Idiomatic handler, automatic handler's path discovery, reflection based url params binding.
+- Lightweight with only standard library dependencies.
+- Idiomatic handler, reflection based handler's path, methods discovery, url parameters and queries binding.
 - Similar syntax for host and path matching.
 - Cascading middlewares support at router, subrouter and handler level.
 
@@ -206,7 +206,40 @@ type Bar struct{
 }          
 ```
 
-- Multiple paths definition with the `limi` struct tag. (Non standard struct tag, will break some linter.)
+- Path definition with the `limi` struct tag with parameters and queries data.
+
+```golang
+// package /pkg/handler
+package handler
+
+// package /pkg/handler/foo
+package handler
+
+type HandleByID struct{
+    _ params `limi:"path={id:[0-9]+}"`        // path => /foo/{id:[0-9]+} // relative regexp path to the package
+}          
+
+type params struct {
+    id int `limi:"param"`
+}
+
+// package /pkg/handler/foo
+package handler
+
+type Bar struct{
+    _ barParams `limi:"path=/user/{id}/story/{slug:.*}"`  // path => /foo/{id}/bar/{slug:.*}
+                                                        // absolute path with a label matcher {id} and a regexp matcher {slug:.*}       
+}          
+
+type barParams struct {
+    id      int    `limi:"param"`          // param = id
+    slugStr string `limi:"param=slug"`     // param = slug
+    offset  int    `limi:"query"`          // param = offset
+    size    int    `limi:"query=pagesize"` // query = pagesize
+}
+```
+
+- Multiple paths definition with the `limi` struct tag.
 
 ```golang
 // package /pkg/handler
@@ -436,7 +469,7 @@ r.AddHandlerFunc("/blog/{id:[0-9]+}" ..      // matches paths /blog/1, /blog/2 .
 r.AddHandlerFunc("/blog/{slug}" ..           // matches paths /blog/cool-article-1, /blog/cool-article-2 ..., sets URLParam["slug"] = <value>
 ```
 
-## URL Parameters Binding
+## URL Parameters and Queries Binding
 
 Limi supports binding custom struct with common data types or custom `stringer` types.
 
@@ -446,7 +479,7 @@ type stringer interface {
 }
 ```
 
-To bind a struct to a handler with URL parameters,
+To bind a struct to a handler with URL parameters.
 
 1. Declare a limi tagged field in the handler with a parameters struct.
 
@@ -458,9 +491,11 @@ type CommentsHandler struct {
 }
 
 type commentParams struct {
-    id int `limi:"param"`                       // url param is the same as field name = {id}
-    blog string `limi:"param=slug"`             // url param is {slug}
+    id        int    `limi:"param"`             // url param is the same as field name = {id}
+    blog      string `limi:"param=slug"`        // url param is {slug}
     commentID myuuid `limi:"param=commentId"`   // url param is a custom type myuuid {commentId}
+    offset    int    `limi:"query"`             // url query with ?offset=
+    pagesize  int    `limi:"query=size"`        // url query with ?size=
 }
 
 type myuuid string
@@ -488,7 +523,7 @@ func (c CommentHandler) Get(w http.ResponseWriter, req *http.Request) {
 ```golang
 r, _ := limi.NewRouter("/") // a new router processing request on /
 
-urlparams,err := SetURLParamsData(commentParams{})
+urlparams,err := middleware.SetURLParamsData(commentParams{})
 if err != nil {
     panic(err)
 }
@@ -505,6 +540,8 @@ type commentParams struct {
     id int `limi:"param"`                       // url param is the same as field name = {id}
     blog string `limi:"param=slug"`             // url param is {slug}
     commentID myuuid `limi:"param=commentId"`   // url param is a custom type myuuid {commentId}
+    offset    int    `limi:"query"`             // url query with ?offset=
+    pagesize  int    `limi:"query=size"`        // url query with ?size=
 }
 
 type myuuid string
@@ -515,7 +552,7 @@ func (m *myuuid) FromString(val string) error {
 }
 
 func GetComment(w http.ResponseWriter, req *http.Request) {
-    params, err := limi.GetParams[commentParams]()
+    params, err := limi.GetParams[commentParams](req.Context())
     if err != nil {
         w.WriteHeader(http.StatusInternalServerError)
         return

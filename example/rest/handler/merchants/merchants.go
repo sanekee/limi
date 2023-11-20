@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 
 	"rest/db"
 
@@ -70,19 +69,22 @@ func (m Merchants) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Merchant struct {
-	_        struct{} `limi:"path={id}"`
+	_        merchantParams `limi:"path={id}"`
 	DBClient DBClient
 }
 
+type merchantParams struct {
+	id int `limi:"param"`
+}
+
 func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[merchantParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	merchant, err := m.DBClient.GetMerchantByID(id)
+	merchant, err := m.DBClient.GetMerchantByID(params.id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -98,8 +100,7 @@ func (m Merchant) Get(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[merchantParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -117,7 +118,7 @@ func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	merchant, err := m.DBClient.UpdateMerchantByID(id, updateParams)
+	merchant, err := m.DBClient.UpdateMerchantByID(params.id, updateParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -134,14 +135,13 @@ func (m Merchant) Put(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m Merchant) Delete(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[merchantParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := m.DBClient.DeleteMerchantByID(id); err != nil {
+	if err := m.DBClient.DeleteMerchantByID(params.id); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -2,6 +2,7 @@ package limi
 
 import (
 	"context"
+	"net/url"
 	"strconv"
 	"testing"
 
@@ -262,6 +263,10 @@ type testParams struct {
 	index     int    `limi:"param=idx"`
 	slugPath  string `limi:"param=slug"`
 	Exported  string `limi:"param=exported"`
+	offset    uint64 `limi:"query"`
+	size      int    `limi:"query=size"`
+	filter    string `limi:"query=f"`
+	Sex       string `limi:"query=sex"`
 	skipField string
 }
 
@@ -274,17 +279,28 @@ func TestParseURLParams(t *testing.T) {
 		SetURLParam(ctx, "slug", "my-path")
 		SetURLParam(ctx, "exported", "my-export")
 		SetURLParam(ctx, "skipField", "my-skip")
+		SetQueries(ctx, url.Values{
+			"offset": []string{"6"},
+			"size":   []string{"9"},
+			"f":      []string{"name"},
+			"sex":    []string{"F"},
+		})
 
 		expected := testParams{
 			id:       168,
 			index:    420,
 			slugPath: "my-path",
 			Exported: "my-export",
+			offset:   6,
+			size:     9,
+			filter:   "name",
+			Sex:      "F",
 		}
 		var actual testParams
 		err := ParseURLParams(ctx, &actual)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
+		require.Empty(t, actual.skipField)
 	})
 
 	t.Run("not pointer", func(t *testing.T) {
@@ -312,17 +328,29 @@ func TestParseURLParams(t *testing.T) {
 		SetURLParam(ctx, "slug", "my-path")
 		SetURLParam(ctx, "exported", "my-export")
 		SetURLParam(ctx, "skipField", "my-skip")
+		SetQueries(ctx, url.Values{
+			"offset": []string{"6"},
+			"size":   []string{"9"},
+			"f":      []string{"name"},
+			"sex":    []string{"F"},
+		})
 
 		expected := testParams{
 			id:       168,
 			index:    420,
 			slugPath: "my-path",
 			Exported: "my-export",
+			offset:   6,
+			size:     9,
+			filter:   "name",
+			Sex:      "F",
 		}
+
 		params, err := GetParams(ctx)
 		require.NoError(t, err)
-		actual, ok := params.(*testParams)
+		actual, ok := params.(testParams)
 		require.True(t, ok)
-		require.Equal(t, expected, *actual)
+		require.Equal(t, expected, actual)
+		require.Empty(t, actual.skipField)
 	})
 }

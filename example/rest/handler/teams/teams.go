@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 
 	"rest/db"
 
@@ -71,25 +70,28 @@ func (t Teams) Post(w http.ResponseWriter, req *http.Request) {
 }
 
 type Team struct {
-	_        struct{} `limi:"path=/teams/{id:[0-9]+}"`
+	_        teamParams `limi:"path=/teams/{id:[0-9]+}"`
 	DBClient DBClient
 }
 
+type teamParams struct {
+	id int `limi:"param"`
+}
+
 func (t Team) Get(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[teamParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	merchant, err := t.DBClient.GetTeamByID(id)
+	team, err := t.DBClient.GetTeamByID(params.id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	body, err := json.Marshal(merchant)
+	body, err := json.Marshal(team)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -99,8 +101,7 @@ func (t Team) Get(w http.ResponseWriter, req *http.Request) {
 }
 
 func (t Team) Put(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[teamParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -118,7 +119,7 @@ func (t Team) Put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	merchant, err := t.DBClient.UpdateTeamByID(id, updateParams)
+	merchant, err := t.DBClient.UpdateTeamByID(params.id, updateParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -135,14 +136,13 @@ func (t Team) Put(w http.ResponseWriter, req *http.Request) {
 }
 
 func (t Team) Delete(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[teamParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := t.DBClient.DeleteTeamByID(id); err != nil {
+	if err := t.DBClient.DeleteTeamByID(params.id); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -151,19 +151,22 @@ func (t Team) Delete(w http.ResponseWriter, req *http.Request) {
 }
 
 type TeamMerchants struct {
-	_        struct{} `limi:"path=/teams/{id:[0-9]+}/merchants"`
+	_        teamMerchantsParams `limi:"path=/teams/{id:[0-9]+}/merchants"`
 	DBClient DBClient
 }
 
+type teamMerchantsParams struct {
+	id int `limi:"param"`
+}
+
 func (t TeamMerchants) Get(w http.ResponseWriter, req *http.Request) {
-	idStr := limi.GetURLParam(req.Context(), "id")
-	id, err := strconv.Atoi(idStr)
+	params, err := limi.GetParams[teamMerchantsParams](req.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	merchants, err := t.DBClient.GetMerchantsByTeamID(id)
+	merchants, err := t.DBClient.GetMerchantsByTeamID(params.id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
