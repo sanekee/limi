@@ -65,6 +65,8 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					lastNotAllowedHandle = h
 					continue
 				}
+
+				limi.SetQueries(ctx, req.URL.Query())
 				h.ServeHTTP(w, req)
 				return
 			}

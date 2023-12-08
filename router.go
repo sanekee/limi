@@ -166,8 +166,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		path = req.URL.Path
 
-		limi.SetQueries(ctx, req.URL.Query())
-
 	} else {
 		path = limi.GetRoutingPath(ctx)
 	}
@@ -181,6 +179,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if trail != "" {
 		limi.SetRoutingPath(ctx, trail)
 	}
+
+	limi.SetQueries(ctx, req.URL.Query())
 	h.ServeHTTP(w, req)
 }
 
