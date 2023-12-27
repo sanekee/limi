@@ -3,6 +3,7 @@ package limi
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -1579,6 +1580,28 @@ func TestMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusMethodNotAllowed, rec.Result().StatusCode)
 
 		require.Equal(t, []int{1, 2, 3}, layers)
+	})
+
+	t.Run("flusher", func(t *testing.T) {
+		r, err := NewRouter("/", WithMiddlewares(middleware.Log(log.Default())))
+		require.NoError(t, err)
+
+		err = r.AddHandlerFunc(
+			"/",
+			http.MethodGet,
+			func(w http.ResponseWriter, r *http.Request) {
+				f, ok := w.(http.Flusher)
+				require.True(t, ok)
+				f.Flush()
+				w.WriteHeader(http.StatusOK)
+			},
+		)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:9090/", nil)
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Result().StatusCode)
 	})
 }
 

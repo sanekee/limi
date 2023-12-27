@@ -45,3 +45,11 @@ func (r *responseWriter) Write(b []byte) (int, error) {
 	r.contentLength += w
 	return w, nil
 }
+
+// implement http.Flusher
+func (r *responseWriter) Flush() {
+	flusher, ok := r.ResponseWriter.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
