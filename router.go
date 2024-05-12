@@ -205,9 +205,17 @@ func (r *Router) AddHandler(handler Handler, mws ...func(http.Handler) http.Hand
 		return fmt.Errorf("unsupported handler type %s %w", baseRT.Kind(), limi.ErrUnsupportedOperation)
 	}
 
+	methodNotAllowedHandler := func(allowedMethods ...string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			handler := r.methodNotAllowedHandler(allowedMethods...)
+			handler = attachMiddlewares(handler, mws...)
+			handler.ServeHTTP(w, req)
+		})
+	}
+
 	methods := httpMethodHandlers{
 		m:                       make(map[string]http.Handler),
-		methodNotAllowedHandler: r.methodNotAllowedHandler,
+		methodNotAllowedHandler: methodNotAllowedHandler,
 		paramsType:              getParamsType(baseRT),
 	}
 
@@ -290,6 +298,8 @@ func (r *Router) AddRouter(path string, opts ...RouterOptions) (*Router, error) 
 			return nil, fmt.Errorf("error applying router option to sub route %w", err)
 		}
 	}
+
+	nr.notFoundHandler = attachMiddlewares(nr.notFoundHandler, nr.middlewares...)
 
 	h := nr.methodNotAllowedHandler
 	nr.methodNotAllowedHandler = func(allowedMethods ...string) http.Handler {

@@ -1582,6 +1582,32 @@ func TestMiddleware(t *testing.T) {
 		require.Equal(t, []int{1, 2, 3}, layers)
 	})
 
+	t.Run("router, subrouter, method handler, custom method not allowed", func(t *testing.T) {
+		var layers []int
+		r, err := NewRouter("/", WithMiddlewares(newMiddleware(&layers, 1)))
+		require.NoError(t, err)
+
+		r1, err := r.AddRouter("/foo",
+			WithMiddlewares(newMiddleware(&layers, 2)),
+			WithMethodNotAllowedHandler(func(...string) http.Handler {
+				return newHandler(&layers, 3, http.StatusMethodNotAllowed, nil)
+			}),
+		)
+		require.NoError(t, err)
+
+		testFoo := foo.Foo{}
+		err = r1.AddHandler(testFoo, newMiddleware(&layers, 4))
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:9090/foo/foo", nil)
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusMethodNotAllowed, rec.Result().StatusCode)
+
+		require.Equal(t, []int{4, 1, 2, 3}, layers)
+	})
+
 	t.Run("flusher", func(t *testing.T) {
 		r, err := NewRouter("/", WithMiddlewares(middleware.Log(log.Default())))
 		require.NoError(t, err)
